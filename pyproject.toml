@@ -1,0 +1,32 @@
+# TYPE:        conf
+# SCOPE:       p7m-reader
+# VERSION:     0.1.0
+# DESCRIPTION: packaging for the p7m-reader CLI (core + CLI phase only, not the full app)
+# NAME:        pyproject.toml
+
+# changelog:
+# 0.1.0 - initial packaging, adds a "p7m-reader" console entry point
+#         so the CLI can be installed as a standalone command (e.g.
+#         via pipx) instead of always requiring "python -m p7m_reader.cli".
+#         This is packaging for the current core+CLI phase only, not
+#         for the eventual full application (Yazi/Nemo/Quick
+#         Look/Android integrations, see PROJECT.md).
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "p7m-reader"
+version = "0.1.0"
+description = "Extract the PDF and signer metadata embedded in .p7m (CMS/PKCS#7) envelopes"
+requires-python = ">=3.9"
+dependencies = [
+    "asn1crypto>=1.5.1",
+]
+
+[project.scripts]
+p7m-reader = "p7m_reader.cli:main"
+
+[tool.setuptools]
+packages = ["p7m_reader"]

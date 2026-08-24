@@ -1,0 +1,6 @@
+/project-docs
+/.venv
+/build
+/p7m_reader.egg-info
+__pycache__/
+*.pyc
