@@ -1,11 +1,24 @@
 #!/bin/sh
 # TYPE:        script
 # SCOPE:       sbusta-p7m
-# VERSION:     0.1.6
+# VERSION:     0.1.7
 # DESCRIPTION: Platypus wrapper: native dialogs around the bundled sbusta-p7m-cli
 # NAME:        wrapper.sh
 
 # changelog:
+# 0.1.7 - destination-folder step redesigned: "Annulla" was overloaded
+#         to mean "proceed using the source folder", which is the
+#         opposite of what Cancel means everywhere else — replaced
+#         the native "choose folder" panel (Cancel-only) with an
+#         explicit three-way "display dialog" (Annulla / Cartella
+#         sorgente / Scegli...), where Annulla now genuinely aborts
+#         without extracting anything. "Aiuto" in the dialog now opens
+#         the raw HTML directly again (guaranteed to show the right
+#         content) instead of the "help:" URL scheme, whose bookID
+#         lookup isn't reliably reaching our book (opened Help
+#         Viewer's generic landing page instead) — the Help menu
+#         (cmd+?) still tries "help:" without the empty anchor='',
+#         which may have been causing the fallback to a generic page
 # 0.1.6 - "Aiuto" now opens via the "help:" URL scheme (Help Viewer,
 #         using the registered book) instead of "open" on the raw
 #         .html file (default browser). Destination-folder dialog no
@@ -114,11 +127,15 @@ $out
     exit "$esito_totale"
 fi
 
+# HELP_HTML kept absolute-from-Resources (script's own working
+# directory, documented Platypus behavior) so both this dialog button
+# and, in principle, other tools can reference the exact same file —
+# single source of truth with the registered Help Book's own page.
+HELP_HTML="./sbusta-p7m Help.help/Contents/Resources/it.lproj/index.html"
+
 # Interactive mode (double-click, no dropped files): ask what to process.
-# "Aiuto" opens the same Help Book registered in Info.plist (Help menu,
-# cmd+?) via the "help:" URL scheme, so it opens in Help Viewer — not
-# the default browser, which is what plain "open" on the .html file
-# would do — then re-asks, it doesn't just exit.
+# "Aiuto" opens the HTML page directly (guaranteed correct content);
+# then re-asks, it doesn't just exit.
 while :; do
     tipo=$(osascript <<'EOF' 2>/dev/null
 display dialog "Estrarre un file .p7m singolo o tutti i file in una cartella?" buttons {"File", "Cartella", "Aiuto"} default button "File" with title "sbusta-p7m"
@@ -127,7 +144,7 @@ EOF
     ) || exit 0
 
     if [ "$tipo" = "Aiuto" ]; then
-        open "help:anchor='' bookID='com.tm-ia.sbusta-p7m.help'"
+        open "$HELP_HTML"
         continue
     fi
     break
@@ -141,13 +158,30 @@ else
     ricorsivo="-r"
 fi
 
-# No try/on error here: if "choose folder" is cancelled, osascript
-# itself exits non-zero and prints nothing useful to stdout (the error
-# goes to stderr, discarded below) — $destinazione ends up empty either
-# way, without depending on AppleScript's own error-handling semantics
-# inside the heredoc (a "try ... return \"\"" here didn't reliably fall
-# through to the plain-CLI-call branch, cause unclear).
-destinazione=$(osascript -e 'POSIX path of (choose folder with prompt "Cartella di destinazione (Annulla per usare quella del file sorgente):")' 2>/dev/null)
+# Explicit three-way choice instead of overloading a native folder
+# picker's Cancel button: "Annulla" here genuinely aborts (matches
+# what Cancel means everywhere else), it does NOT mean "proceed with
+# the source folder" as an earlier version of this script did.
+destinazione=""
+while :; do
+    scelta=$(osascript <<'EOF' 2>/dev/null
+display dialog "Cartella di destinazione?" buttons {"Annulla", "Cartella sorgente", "Scegli..."} default button "Cartella sorgente" with title "sbusta-p7m"
+button returned of result
+EOF
+    ) || exit 0
+
+    case "$scelta" in
+        Annulla) exit 0 ;;
+        "Cartella sorgente") break ;;
+        "Scegli...")
+            destinazione=$(osascript -e 'POSIX path of (choose folder with prompt "Cartella di destinazione:")' 2>/dev/null)
+            # If this inner picker is itself cancelled, $destinazione
+            # stays empty and we loop back to the three-way choice
+            # above, instead of guessing what the user meant.
+            [ -n "$destinazione" ] && break
+            ;;
+    esac
+done
 
 if [ -n "$destinazione" ]; then
     # $ricorsivo intentionally unquoted: it is always either empty or
