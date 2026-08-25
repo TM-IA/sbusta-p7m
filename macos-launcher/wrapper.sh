@@ -1,11 +1,15 @@
 #!/bin/sh
 # TYPE:        script
 # SCOPE:       sbusta-p7m
-# VERSION:     0.1.4
+# VERSION:     0.1.5
 # DESCRIPTION: Platypus wrapper: native dialogs around the bundled sbusta-p7m-cli
 # NAME:        wrapper.sh
 
 # changelog:
+# 0.1.5 - added an "Aiuto" button to the initial dialog, opening the
+#         same HTML page registered as the app's Help Book (single
+#         source of truth, accessible both from the dialog and from
+#         the Help menu / cmd+?)
 # 0.1.4 - log now appends a timestamped block per run instead of being
 #         overwritten each time, so the history of past extractions
 #         stays readable (previously only the latest run was kept)
@@ -105,11 +109,23 @@ $out
 fi
 
 # Interactive mode (double-click, no dropped files): ask what to process.
-tipo=$(osascript <<'EOF' 2>/dev/null
-display dialog "Estrarre un file .p7m singolo o tutti i file in una cartella?" buttons {"File", "Cartella"} default button "File" with title "sbusta-p7m"
+# "Aiuto" opens the same HTML page registered as the app's Help Book
+# (Help menu, cmd+?) — single source of truth, not duplicated text —
+# then re-asks, it doesn't just exit.
+HELP_HTML="./sbusta-p7m Help.help/Contents/Resources/it.lproj/index.html"
+while :; do
+    tipo=$(osascript <<'EOF' 2>/dev/null
+display dialog "Estrarre un file .p7m singolo o tutti i file in una cartella?" buttons {"File", "Cartella", "Aiuto"} default button "File" with title "sbusta-p7m"
 button returned of result
 EOF
-) || exit 0
+    ) || exit 0
+
+    if [ "$tipo" = "Aiuto" ]; then
+        open "$HELP_HTML"
+        continue
+    fi
+    break
+done
 
 if [ "$tipo" = "File" ]; then
     percorso=$(osascript -e 'POSIX path of (choose file with prompt "Seleziona un file .p7m:")' 2>/dev/null) || exit 0

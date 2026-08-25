@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>sbusta-p7m — Aiuto</title>
+<meta name="AppleTitle" content="sbusta-p7m Help">
+</head>
+<body>
+<h1>sbusta-p7m</h1>
+<p>Estrae il PDF contenuto in una busta <code>.p7m</code> (firma digitale
+italiana), insieme ai metadati del firmatario, salvati in un file
+<code>.json</code> a lato.</p>
+
+<h2>Come si usa</h2>
+<ul>
+  <li><b>Doppio click sull'app</b>: si apre un dialogo che chiede se
+      elaborare un file <code>.p7m</code> singolo o tutti i file in una
+      cartella, poi (facoltativo) la cartella di destinazione.</li>
+  <li><b>Trascina un file <code>.p7m</code></b> sull'icona dell'app:
+      estrazione diretta, nessun dialogo, risultato nella stessa
+      cartella del file sorgente.</li>
+</ul>
+
+<h2>Cosa viene prodotto</h2>
+<p>Per ogni <code>nome.p7m</code>, una sottocartella <code>nome/</code>
+contenente <code>nome.pdf</code> e <code>nome.json</code> (metadati del
+firmatario: nome, organizzazione, numero seriale, validità, algoritmo,
+data/ora di firma). Se il documento è stato firmato più volte, il JSON
+elenca un firmatario per ogni livello di busta attraversato.</p>
+
+<h2>Log</h2>
+<p>Ogni esecuzione aggiunge un blocco datato a
+<code>sbusta-p7m-log.txt</code>, nella cartella di destinazione — utile
+per rivedere cosa è stato estratto ed eventuali errori.</p>
+
+<h2>Limiti noti</h2>
+<p>Nessuna validazione crittografica della firma, della catena di
+certificazione o dello stato di revoca: solo estrazione strutturale del
+contenuto.</p>
+</body>
+</html>
