@@ -1,20 +1,3 @@
-# TYPE:        conf
-# SCOPE:       sbusta-p7m
-# VERSION:     0.1.1
-# DESCRIPTION: packaging for the sbusta-p7m CLI (core + CLI phase only, not the full app)
-# NAME:        pyproject.toml
-
-# changelog:
-# 0.1.1 - project renamed from p7m-reader to sbusta-p7m (the tool
-#         unpacks/extracts, it doesn't "read" .p7m files): package,
-#         console entry point and command name all renamed accordingly
-# 0.1.0 - initial packaging, adds a "p7m-reader" console entry point
-#         so the CLI can be installed as a standalone command (e.g.
-#         via pipx) instead of always requiring "python -m p7m_reader.cli".
-#         This is packaging for the current core+CLI phase only, not
-#         for the eventual full application (Yazi/Nemo/Quick
-#         Look/Android integrations, see PROJECT.md).
-
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"

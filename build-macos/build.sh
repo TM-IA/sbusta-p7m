@@ -1,16 +1,7 @@
 #!/bin/sh
-# TYPE:        script
-# SCOPE:       sbusta-p7m
-# VERSION:     0.1.0
-# DESCRIPTION: builds the self-contained macOS app (PyInstaller + Platypus + Help Book registration)
-# NAME:        build.sh
-
-# changelog:
-# 0.1.0 - initial implementation, consolidates steps previously run by
-#         hand across several sessions (universal2 PyInstaller build,
-#         Platypus wrap, Help Book registration via PlistBuddy — the
-#         latter isn't exposed as a platypus CLI flag, so it has to
-#         run as a separate post-processing step after every build)
+# Builds the self-contained macOS app: PyInstaller (universal2) +
+# Platypus wrap + Help Book registration (not exposed as a platypus
+# CLI flag, so it runs as a separate post-processing step).
 
 set -eu
 

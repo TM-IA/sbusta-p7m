@@ -1,48 +1,5 @@
 #!/bin/sh
-# TYPE:        script
-# SCOPE:       sbusta-p7m
-# VERSION:     0.1.7
-# DESCRIPTION: Platypus wrapper: native dialogs around the bundled sbusta-p7m-cli
-# NAME:        wrapper.sh
-
-# changelog:
-# 0.1.7 - destination-folder step redesigned: "Annulla" was overloaded
-#         to mean "proceed using the source folder", which is the
-#         opposite of what Cancel means everywhere else — replaced
-#         the native "choose folder" panel (Cancel-only) with an
-#         explicit three-way "display dialog" (Annulla / Cartella
-#         sorgente / Scegli...), where Annulla now genuinely aborts
-#         without extracting anything. "Aiuto" in the dialog now opens
-#         the raw HTML directly again (guaranteed to show the right
-#         content) instead of the "help:" URL scheme, whose bookID
-#         lookup isn't reliably reaching our book (opened Help
-#         Viewer's generic landing page instead) — the Help menu
-#         (cmd+?) still tries "help:" without the empty anchor='',
-#         which may have been causing the fallback to a generic page
-# 0.1.6 - "Aiuto" now opens via the "help:" URL scheme (Help Viewer,
-#         using the registered book) instead of "open" on the raw
-#         .html file (default browser). Destination-folder dialog no
-#         longer relies on an in-script AppleScript try/on error: on
-#         Cancel it produced an error and skipped extraction instead
-#         of falling back to the source folder as intended
-# 0.1.5 - added an "Aiuto" button to the initial dialog, opening the
-#         same HTML page registered as the app's Help Book (single
-#         source of truth, accessible both from the dialog and from
-#         the Help menu / cmd+?)
-# 0.1.4 - log now appends a timestamped block per run instead of being
-#         overwritten each time, so the history of past extractions
-#         stays readable (previously only the latest run was kept)
-# 0.1.3 - project renamed from p7m-reader to sbusta-p7m (the tool
-#         unpacks/extracts, it doesn't "read" .p7m files): bundled
-#         executable, log filename and dialog titles renamed accordingly
-# 0.1.2 - fixed script exit code: both branches always exited 0 (or
-#         inherited an unrelated command's exit status) regardless of
-#         whether extraction actually failed
-# 0.1.1 - "display dialog" cannot be resized/scrolled, so it cannot
-#         hold the full output of a batch run readably: now shows only
-#         a short summary and writes the full CLI output to a log file
-#         in the destination folder, mentioned in the dialog
-# 0.1.0 - initial implementation
+# Platypus wrapper: native dialogs around the bundled sbusta-p7m-cli.
 
 set -u
 

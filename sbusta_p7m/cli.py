@@ -1,23 +1,3 @@
-# TYPE:        script
-# SCOPE:       sbusta-p7m
-# VERSION:     0.1.3
-# DESCRIPTION: command-line interface for batch .p7m extraction
-# NAME:        cli.py
-
-# changelog:
-# 0.1.3 - project renamed from p7m-reader to sbusta-p7m (the tool
-#         unpacks/extracts, it doesn't "read" .p7m files)
-# 0.1.2 - fixed _stem_senza_p7m: stripped only one trailing ".p7m",
-#         leaving "name.pdf.p7m.p7m" for a triple-nested envelope
-#         (name.pdf.p7m.p7m.p7m) instead of "name.pdf" — found on a
-#         real triple-signed document. Now strips every trailing
-#         ".p7m" occurrence, not just the last one.
-# 0.1.1 - each processed file now gets its own subfolder (named after
-#         the source file, extensions stripped) inside the destination
-#         folder, containing its .pdf + .json pair, instead of dumping
-#         all outputs flat into one folder
-# 0.1.0 - initial implementation
-
 """Command-line interface for sbusta_p7m.core.
 
 Extracts the PDF and signer metadata from one .p7m file, or from every

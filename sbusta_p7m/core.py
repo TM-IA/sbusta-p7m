@@ -1,22 +1,3 @@
-# TYPE:        script
-# SCOPE:       sbusta-p7m
-# VERSION:     0.1.2
-# DESCRIPTION: extracts the embedded PDF and signer metadata from a .p7m envelope
-# NAME:        core.py
-
-# changelog:
-# 0.1.2 - project renamed from p7m-reader to sbusta-p7m (the tool
-#         unpacks/extracts, it doesn't "read" .p7m files)
-# 0.1.1 - handle iterative/nested envelopes (file.pdf.p7m.p7m, multiple
-#         signature passes): unwrap layer by layer until the raw PDF
-#         emerges or the content is no longer a CMS SignedData envelope.
-#         "firmatario" (single object) replaced by "firmatari" (array,
-#         one entry per layer crossed, outermost first); algoritmo_firma
-#         and signing_time moved inside each array entry, since they are
-#         per-signature, not global to the file. Added a depth safety
-#         cap (MAX_LIVELLI) against pathological nesting.
-# 0.1.0 - initial implementation
-
 """Core extraction logic for .p7m (CMS/PKCS#7 SignedData) envelopes.
 
 No cryptographic validation is performed here: this module only reads the
