@@ -1,4 +1,4 @@
-# p7m-reader
+# sbusta-p7m
 
 Extract the PDF embedded in a `.p7m` envelope (CMS/PKCS#7, the format
 used by Italian digital signatures), together with the signer's
@@ -14,18 +14,18 @@ Android). Interface and packaging may still change.
 ## Requirements
 
 - Python 3.9+
-- [pipx](https://pipx.pypa.io/) (recommended for a standalone `p7m-reader`
+- [pipx](https://pipx.pypa.io/) (recommended for a standalone `sbusta-p7m`
   command), or plain `pip`/`venv`
 
 ## Install
 
 ```sh
 git clone <repo-url>
-cd p7m-reader
+cd sbusta-p7m
 pipx install .
 ```
 
-This installs a standalone `p7m-reader` command, independent from any
+This installs a standalone `sbusta-p7m` command, independent from any
 project virtual environment. To pick up local source changes, reinstall
 with `pipx install . --force`.
 
@@ -34,14 +34,14 @@ Alternatively, without pipx:
 ```sh
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-.venv/bin/python3 -m p7m_reader.cli <args>
+.venv/bin/python3 -m sbusta_p7m.cli <args>
 ```
 
 ## Usage
 
 ```sh
-p7m-reader <file.p7m>
-p7m-reader <folder> [-r] [-d <destination>]
+sbusta-p7m <file.p7m>
+sbusta-p7m <folder> [-r] [-d <destination>]
 ```
 
 - `percorso` (positional): a single `.p7m` file, or a folder. If it's a
@@ -59,7 +59,8 @@ Exit code is `0` if every file succeeded, `1` otherwise.
 
 ## Output
 
-For each `name.p7m` (or `name.pdf.p7m`), two files are written:
+For each `name.p7m` (or `name.pdf.p7m`), a `name/` subfolder is created
+inside the destination, containing:
 
 - `name.pdf` — the extracted PDF, unmodified
 - `name.json` — signer metadata, e.g.:
@@ -86,7 +87,8 @@ For each `name.p7m` (or `name.pdf.p7m`), two files are written:
 files have a single layer (array of length 1); files signed more than
 once (`name.pdf.p7m.p7m`, nested CMS envelopes) produce one entry per
 layer, outermost signature first. Any field that could not be resolved
-is `null`, never omitted.
+is `null`, never omitted. Verified against real Italian documents signed
+up to three times.
 
 ## Known limitations
 
@@ -94,6 +96,3 @@ is `null`, never omitted.
   revocation status: structural extraction only.
 - Only the first signer of each envelope layer is read (co-signed
   envelopes with several signers at the same layer are not handled).
-- Nested-envelope unwrapping has only been verified against a
-  synthetically built double envelope (self-signed test certificate),
-  not against a real double-signed Italian `.p7m.p7m` file.

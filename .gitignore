@@ -1,6 +1,10 @@
 /project-docs
 /.venv
+/.venv-build-macos
 /build
-/p7m_reader.egg-info
+/build-macos/dist
+/build-macos/work
+/build-macos/*.spec
+/sbusta_p7m.egg-info
 __pycache__/
 *.pyc

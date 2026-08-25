@@ -1,10 +1,12 @@
 # TYPE:        script
-# SCOPE:       p7m-reader
-# VERSION:     0.1.1
+# SCOPE:       sbusta-p7m
+# VERSION:     0.1.2
 # DESCRIPTION: extracts the embedded PDF and signer metadata from a .p7m envelope
 # NAME:        core.py
 
 # changelog:
+# 0.1.2 - project renamed from p7m-reader to sbusta-p7m (the tool
+#         unpacks/extracts, it doesn't "read" .p7m files)
 # 0.1.1 - handle iterative/nested envelopes (file.pdf.p7m.p7m, multiple
 #         signature passes): unwrap layer by layer until the raw PDF
 #         emerges or the content is no longer a CMS SignedData envelope.
@@ -39,7 +41,7 @@ MAX_LIVELLI = 10
 
 
 class P7mError(Exception):
-    """Base class for all errors raised by p7m_reader.core."""
+    """Base class for all errors raised by sbusta_p7m.core."""
 
 
 class P7mFormatError(P7mError):

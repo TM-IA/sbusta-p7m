@@ -1,13 +1,24 @@
 # TYPE:        script
-# SCOPE:       p7m-reader
-# VERSION:     0.1.0
+# SCOPE:       sbusta-p7m
+# VERSION:     0.1.3
 # DESCRIPTION: command-line interface for batch .p7m extraction
 # NAME:        cli.py
 
 # changelog:
+# 0.1.3 - project renamed from p7m-reader to sbusta-p7m (the tool
+#         unpacks/extracts, it doesn't "read" .p7m files)
+# 0.1.2 - fixed _stem_senza_p7m: stripped only one trailing ".p7m",
+#         leaving "name.pdf.p7m.p7m" for a triple-nested envelope
+#         (name.pdf.p7m.p7m.p7m) instead of "name.pdf" — found on a
+#         real triple-signed document. Now strips every trailing
+#         ".p7m" occurrence, not just the last one.
+# 0.1.1 - each processed file now gets its own subfolder (named after
+#         the source file, extensions stripped) inside the destination
+#         folder, containing its .pdf + .json pair, instead of dumping
+#         all outputs flat into one folder
 # 0.1.0 - initial implementation
 
-"""Command-line interface for p7m_reader.core.
+"""Command-line interface for sbusta_p7m.core.
 
 Extracts the PDF and signer metadata from one .p7m file, or from every
 .p7m file found in a folder (optionally recursive). Never raises an
@@ -24,26 +35,31 @@ from .core import estrai, P7mFormatError, P7mContentError
 
 
 def _stem_senza_p7m(nome_file):
-    """Strip the trailing .p7m extension (case-insensitive), without
+    """Strip every trailing .p7m extension (case-insensitive), without
     touching any other extension already present (e.g. "nome.pdf.p7m"
-    -> "nome.pdf", not "nome.pdf.p7m" with .pdf appended again)."""
-    if nome_file.lower().endswith(".p7m"):
-        return nome_file[:-4]
+    -> "nome.pdf"). A file signed more than once has one .p7m per
+    envelope layer (e.g. "nome.pdf.p7m.p7m.p7m" for a triple-signed
+    document) — all of them are stripped, not just the last one."""
+    while nome_file.lower().endswith(".p7m"):
+        nome_file = nome_file[:-4]
     return nome_file
 
 
 def _nomi_output(percorso_p7m):
-    """Compute the (pdf_filename, json_filename) pair for a given .p7m
-    input path, handling both "nome.p7m" and "nome.pdf.p7m" naming."""
+    """Compute the (folder_name, pdf_filename, json_filename) triple for
+    a given .p7m input path, handling both "nome.p7m" and "nome.pdf.p7m"
+    naming. folder_name has every extension stripped (.p7m, and .pdf if
+    present): each processed file gets its own subfolder, named after
+    it, holding its .pdf + .json pair."""
     base = os.path.basename(percorso_p7m)
     senza_p7m = _stem_senza_p7m(base)
     if senza_p7m.lower().endswith(".pdf"):
         pdf_filename = senza_p7m
-        json_stem = senza_p7m[:-4]
+        stem = senza_p7m[:-4]
     else:
         pdf_filename = senza_p7m + ".pdf"
-        json_stem = senza_p7m
-    return pdf_filename, json_stem + ".json"
+        stem = senza_p7m
+    return stem, pdf_filename, stem + ".json"
 
 
 def _trova_file_p7m(cartella, ricorsivo):
@@ -85,19 +101,21 @@ def _elabora_file(percorso_p7m, cartella_destinazione):
             file=sys.stderr,
         )
 
-    pdf_filename, json_filename = _nomi_output(percorso_p7m)
-    pdf_path = os.path.join(cartella_destinazione, pdf_filename)
-    json_path = os.path.join(cartella_destinazione, json_filename)
+    folder_name, pdf_filename, json_filename = _nomi_output(percorso_p7m)
+    cartella_file = os.path.join(cartella_destinazione, folder_name)
+    pdf_path = os.path.join(cartella_file, pdf_filename)
+    json_path = os.path.join(cartella_file, json_filename)
 
     if os.path.exists(pdf_path) or os.path.exists(json_path):
         print(
             f"errore: {nome}: file di destinazione già esistente "
-            f"({pdf_filename} o {json_filename}), non sovrascritto",
+            f"({folder_name}/{pdf_filename} o {folder_name}/{json_filename}), "
+            "non sovrascritto",
             file=sys.stderr,
         )
         return False
 
-    os.makedirs(cartella_destinazione, exist_ok=True)
+    os.makedirs(cartella_file, exist_ok=True)
 
     metadata["pdf_estratto"] = pdf_filename
 
@@ -107,7 +125,7 @@ def _elabora_file(percorso_p7m, cartella_destinazione):
         json.dump(metadata, f, ensure_ascii=False, indent=2)
         f.write("\n")
 
-    print(f"ok: {nome} -> {pdf_filename}, {json_filename}")
+    print(f"ok: {nome} -> {folder_name}/{pdf_filename}, {folder_name}/{json_filename}")
     return True
 
 

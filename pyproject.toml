@@ -1,10 +1,13 @@
 # TYPE:        conf
-# SCOPE:       p7m-reader
-# VERSION:     0.1.0
-# DESCRIPTION: packaging for the p7m-reader CLI (core + CLI phase only, not the full app)
+# SCOPE:       sbusta-p7m
+# VERSION:     0.1.1
+# DESCRIPTION: packaging for the sbusta-p7m CLI (core + CLI phase only, not the full app)
 # NAME:        pyproject.toml
 
 # changelog:
+# 0.1.1 - project renamed from p7m-reader to sbusta-p7m (the tool
+#         unpacks/extracts, it doesn't "read" .p7m files): package,
+#         console entry point and command name all renamed accordingly
 # 0.1.0 - initial packaging, adds a "p7m-reader" console entry point
 #         so the CLI can be installed as a standalone command (e.g.
 #         via pipx) instead of always requiring "python -m p7m_reader.cli".
@@ -17,7 +20,7 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "p7m-reader"
+name = "sbusta-p7m"
 version = "0.1.0"
 description = "Extract the PDF and signer metadata embedded in .p7m (CMS/PKCS#7) envelopes"
 requires-python = ">=3.9"
@@ -26,7 +29,7 @@ dependencies = [
 ]
 
 [project.scripts]
-p7m-reader = "p7m_reader.cli:main"
+sbusta-p7m = "sbusta_p7m.cli:main"
 
 [tool.setuptools]
-packages = ["p7m_reader"]
+packages = ["sbusta_p7m"]
