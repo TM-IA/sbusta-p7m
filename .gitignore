@@ -1,10 +1,15 @@
 /project-docs
+/.claude
 /.venv
 /.venv-build-macos
 /build
 /build-macos/dist
 /build-macos/work
 /build-macos/*.spec
+/build-linux/dist
+/build-linux/work
+/build-linux/.venv
+/build-linux/*.spec
 /sbusta_p7m.egg-info
 __pycache__/
 *.pyc

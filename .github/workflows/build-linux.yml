@@ -1,0 +1,68 @@
+name: build-linux
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'sbusta_p7m/**'
+      - 'linux-launcher/**'
+      - 'build-linux/**'
+      - '.github/workflows/build-linux.yml'
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            arch: x86_64
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y librsvg2-bin
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Build
+        run: ./build-linux/build.sh
+
+      # Validates the actual built binary against a real (synthetically
+      # signed) CMS envelope, not just that PyInstaller succeeded —
+      # same technique used locally for the macOS build (openssl cms
+      # -sign with a throwaway self-signed cert).
+      - name: Smoke test the built CLI
+        run: |
+          set -eu
+          printf '%%PDF-1.4\ntest content\n' > /tmp/test.pdf
+          openssl req -x509 -newkey rsa:2048 -keyout /tmp/key.pem -out /tmp/cert.pem \
+              -days 1 -nodes -subj "/CN=CI Test Signer/O=sbusta-p7m CI"
+          openssl cms -sign -in /tmp/test.pdf -signer /tmp/cert.pem -inkey /tmp/key.pem \
+              -outform DER -binary -nodetach -out /tmp/test.p7m
+          PKG_DIR="build-linux/dist/sbusta-p7m-linux-${{ matrix.arch }}"
+          "$PKG_DIR/sbusta-p7m-cli" /tmp/test.p7m -d /tmp/out
+          test -f /tmp/out/test/test.pdf
+          test -f /tmp/out/test/test.json
+          grep -q "CI Test Signer" /tmp/out/test/test.json
+          echo "smoke test OK"
+
+      - name: Check package contents
+        run: |
+          set -eu
+          PKG_DIR="build-linux/dist/sbusta-p7m-linux-${{ matrix.arch }}"
+          for f in sbusta-p7m-cli wrapper.sh help/index.html sbusta-p7m.desktop install.sh uninstall.sh icon.png; do
+              test -f "$PKG_DIR/$f" || { echo "manca $f nel pacchetto" >&2; exit 1; }
+          done
+          echo "struttura pacchetto OK"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbusta-p7m-linux-${{ matrix.arch }}
+          path: build-linux/dist/sbusta-p7m-linux-${{ matrix.arch }}.tar.gz

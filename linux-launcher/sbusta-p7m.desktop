@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=sbusta-p7m
+Comment=Extract the PDF and signer metadata embedded in .p7m (CMS/PKCS#7) envelopes
+Exec=__INSTALL_DIR__/wrapper.sh %F
+Icon=__INSTALL_DIR__/icon.png
+Terminal=false
+Categories=Utility;Office;
+MimeType=application/pkcs7-mime;application/x-pkcs7-mime;

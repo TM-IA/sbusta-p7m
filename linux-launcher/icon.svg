@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="1024"
+   height="1024"
+   viewBox="0 0 1024 1024"
+   version="1.1"
+   id="svg17"
+   sodipodi:docname="p7m-icon.svg"
+   inkscape:version="1.4.2 (ebf0e940, 2025-05-08)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview17"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="0.8125"
+     inkscape:cx="511.38462"
+     inkscape:cy="512"
+     inkscape:window-width="2208"
+     inkscape:window-height="1311"
+     inkscape:window-x="724"
+     inkscape:window-y="57"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg17" />
+  <defs
+     id="defs5">
+    <linearGradient
+       id="bg"
+       x1="0"
+       y1="0"
+       x2="1"
+       y2="1">
+      <stop
+         offset="0%"
+         stop-color="#3D6FE0"
+         id="stop1" />
+      <stop
+         offset="100%"
+         stop-color="#16368F"
+         id="stop2" />
+    </linearGradient>
+    <radialGradient
+       id="wax"
+       cx="552.27448"
+       cy="557.47741"
+       r="140.89314"
+       gradientTransform="scale(1.0087017,0.99137336)"
+       fx="552.27448"
+       fy="557.47741"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         stop-color="#E15A42"
+         id="stop3" />
+      <stop
+         offset="55%"
+         stop-color="#C22F2B"
+         id="stop4" />
+      <stop
+         offset="100%"
+         stop-color="#7E141C"
+         id="stop5" />
+    </radialGradient>
+    <clipPath
+       id="bodyCrop">
+      <rect
+         x="0"
+         y="582"
+         width="1024"
+         height="442"
+         id="rect5" />
+    </clipPath>
+  </defs>
+  <!-- background -->
+  <rect
+     x="0"
+     y="0"
+     width="1024"
+     height="1024"
+     rx="224"
+     fill="url(#bg)"
+     id="rect6" />
+  <!-- envelope body (back) -->
+  <!-- pocket fold seams for a touch of realism -->
+  <!-- open flap, folded back (behind the letter) -->
+  <!-- letter, sliding out in front of the envelope -->
+  <!-- ribbon strip under the seal, like the fabric tape under a wax stamp -->
+  <!-- broken wax seal, pressed across the flap seam: only the part on the body stays visible -->
+  <g
+     id="g24"
+     transform="translate(11.076923,-44.307692)">
+    <path
+       d="m 310,582 h 404 q 10,0 10,10 v 204 q 0,24 -24,24 H 324 q -24,0 -24,-24 V 592 q 0,-10 10,-10 z"
+       fill="#cbd6ec"
+       stroke="#9fb0d4"
+       stroke-width="5"
+       id="path6" />
+    <path
+       d="M 300,596 512,748 724,596"
+       fill="none"
+       stroke="#9fb0d4"
+       stroke-width="4"
+       opacity="0.7"
+       id="path7" />
+    <path
+       d="M 300,582 512,414 724,582 Z"
+       fill="#b7c5e4"
+       stroke="#93a5ce"
+       stroke-width="5"
+       stroke-linejoin="round"
+       id="path8" />
+    <g
+       id="g22"
+       transform="translate(-22.153846,51.692308)">
+      <g
+         transform="rotate(-6,1440.1442,-437.84868)"
+         id="g13">
+        <path
+           d="m 313.14821,189.74594 h 198 l 58,58 13.31346,247.5563 c 0.41522,7.72084 -93.24545,63.06584 -99.99427,66.83907 l -62.51647,34.95262 c 0,0 -117.64976,-102.56217 -117.73359,-110.2937 l -3.06913,-283.05429 c -0.0838,-7.73154 6.26801,-14 14,-14 z"
+           fill="#ffffff"
+           stroke="#b9c6da"
+           stroke-width="4"
+           id="path9"
+           sodipodi:nodetypes="sccsscsss" />
+        <path
+           d="m 510.05284,188.39326 v 44 a 14,14 0 0 0 14,14 h 44 z"
+           fill="#c9dbff"
+           id="path10" />
+        <g
+           stroke="#5c6b85"
+           stroke-width="15"
+           stroke-linecap="round"
+           id="g12">
+          <line
+             x1="332"
+             y1="284"
+             x2="502"
+             y2="284"
+             id="line10" />
+          <line
+             x1="332"
+             y1="334"
+             x2="502"
+             y2="334"
+             id="line11" />
+          <line
+             x1="332"
+             y1="384"
+             x2="458"
+             y2="384"
+             id="line12" />
+        </g>
+      </g>
+    </g>
+    <g
+       id="g21"
+       transform="rotate(4.5172111,-1484.2021,-1706.4622)">
+      <g
+         id="g20"
+         transform="rotate(-15.894899,356.26471,-333.83131)">
+        <g
+           id="g18"
+           transform="translate(-1.2307692,-17.230769)">
+          <path
+             d="m 572,636 h 42 v 106 l -21,22 -21,-22 z"
+             fill="#e9dcb8"
+             stroke="#b8a876"
+             stroke-width="4"
+             id="path13" />
+        </g>
+        <g
+           id="g19">
+          <g
+             stroke="#c9b98a"
+             stroke-width="3"
+             id="g15">
+            <line
+               x1="572"
+               y1="660"
+               x2="614"
+               y2="660"
+               id="line13" />
+            <line
+               x1="572"
+               y1="684"
+               x2="614"
+               y2="684"
+               id="line14" />
+            <line
+               x1="572"
+               y1="708"
+               x2="614"
+               y2="708"
+               id="line15" />
+          </g>
+        </g>
+      </g>
+      <g
+         clip-path="url(#bodyCrop)"
+         id="g17"
+         transform="rotate(-41.018488,567.42216,229.69266)">
+        <path
+           d="m 658.3,602 c 0.1,8.9 -8.4,17.4 -11.8,26.7 -3.4,9.4 -2.1,23.3 -8.5,29.3 -6.4,6 -20.8,3.4 -30.1,6.5 -9.3,3.2 -17,11.8 -25.9,12.4 -8.9,0.5 -17.8,-6.1 -27.3,-9 -9.5,-3 -23.7,-2.3 -29.7,-8.9 -6,-6.6 -3.1,-21.3 -6.2,-30.8 -3.1,-9.5 -12.1,-17.3 -12.4,-26.2 -0.3,-8.9 7.1,-17.8 10.4,-27 3.4,-9.3 3.1,-22.7 9.7,-28.5 6.6,-5.8 20.6,-3.3 29.9,-6.4 9.2,-3.1 16.7,-11.5 25.6,-12.3 8.9,-0.7 18.1,4.7 27.6,7.7 9.4,2.9 22.9,3.3 28.9,10 6.1,6.7 4.1,20.6 7.4,30 3.3,9.5 12.3,17.6 12.4,26.5 z"
+           fill="url(#wax)"
+           stroke="#5c0f17"
+           stroke-width="6"
+           id="path15"
+           style="fill:url(#wax)" />
+        <!-- crack through the visible portion -->
+        <path
+           d="m 542,544 22,22 -26,20 30,22 -28,22 22,24 -18,14"
+           fill="none"
+           stroke="#6b1017"
+           stroke-width="4"
+           stroke-linejoin="round"
+           id="path16" />
+        <path
+           d="m 542,544 22,22 -26,20 30,22 -28,22 22,24 -18,14 6,4 20,-20 -28,-24 30,-22 -30,-22 26,-20 -20,-24 z"
+           fill="#8a1b22"
+           opacity="0.55"
+           id="path17" />
+      </g>
+    </g>
+  </g>
+</svg>
