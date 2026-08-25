@@ -1,11 +1,14 @@
 #!/bin/sh
 # TYPE:        script
 # SCOPE:       sbusta-p7m
-# VERSION:     0.1.3
+# VERSION:     0.1.4
 # DESCRIPTION: Platypus wrapper: native dialogs around the bundled sbusta-p7m-cli
 # NAME:        wrapper.sh
 
 # changelog:
+# 0.1.4 - log now appends a timestamped block per run instead of being
+#         overwritten each time, so the history of past extractions
+#         stays readable (previously only the latest run was kept)
 # 0.1.3 - project renamed from p7m-reader to sbusta-p7m (the tool
 #         unpacks/extracts, it doesn't "read" .p7m files): bundled
 #         executable, log filename and dialog titles renamed accordingly
@@ -38,7 +41,11 @@ scrivi_log_e_mostra() {
     cartella_log="$3"
 
     log_path="$cartella_log/sbusta-p7m-log.txt"
-    printf '%s\n' "$testo_completo" > "$log_path" 2>/dev/null
+    {
+        echo "=== $(date '+%Y-%m-%d %H:%M:%S') ==="
+        printf '%s\n' "$testo_completo"
+        echo
+    } >> "$log_path" 2>/dev/null
 
     # Reuse the CLI's own "riepilogo: N ok, M falliti" line verbatim
     # when present (batch mode) instead of recomputing counts here —
