@@ -1,6 +1,6 @@
+// No separate Kotlin plugin: AGP 9.0+ has built-in Kotlin support.
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
 }
 
 android {
