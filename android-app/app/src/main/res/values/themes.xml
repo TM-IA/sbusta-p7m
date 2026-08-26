@@ -1,0 +1,5 @@
+<resources>
+    <!-- Plain AppCompat theme: no Material Components library dependency,
+         keeps the dependency set minimal for this first version. -->
+    <style name="Theme.SbustaP7m" parent="Theme.AppCompat.DayNight.NoActionBar" />
+</resources>

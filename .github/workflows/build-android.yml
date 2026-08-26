@@ -1,0 +1,37 @@
+name: build-android
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'android-app/**'
+      - '.github/workflows/build-android.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # No Gradle wrapper committed yet (no local Gradle/JDK available
+      # to generate gradle-wrapper.jar in the session that wrote this
+      # project) — using the runner's own preinstalled Gradle directly.
+      - name: Unit tests (JVM, no emulator)
+        run: gradle test --no-daemon
+
+      - name: Build debug APK
+        run: gradle assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbusta-p7m-android-debug
+          path: android-app/app/build/outputs/apk/debug/*.apk

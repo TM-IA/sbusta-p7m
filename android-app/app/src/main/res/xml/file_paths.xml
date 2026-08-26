@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Extracted PDFs are written to the app's private cache
+         subfolder "estratti/" before being shared via FileProvider. -->
+    <cache-path name="estratti" path="estratti/" />
+</paths>

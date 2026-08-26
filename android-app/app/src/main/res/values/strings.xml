@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">sbusta-p7m</string>
+    <string name="titolo_errore">Estrazione fallita</string>
+    <string name="pulsante_apri_pdf">Apri PDF</string>
+    <string name="pulsante_esporta_json">Esporta metadati JSON</string>
+    <string name="etichetta_firmatari">Firmatari</string>
+</resources>

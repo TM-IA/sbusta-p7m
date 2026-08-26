@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:label="@string/app_name"
+        android:allowBackup="false"
+        android:theme="@style/Theme.SbustaP7m">
+
+        <activity
+            android:name=".SbustaP7mActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="application/pkcs7-mime" />
+                <data android:mimeType="application/x-pkcs7-mime" />
+            </intent-filter>
+        </activity>
+
+        <!-- Needed to hand the extracted PDF to another app (the
+             system PDF viewer) via a content:// Uri instead of a raw
+             file:// path, required on modern Android. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+    </application>
+
+</manifest>
