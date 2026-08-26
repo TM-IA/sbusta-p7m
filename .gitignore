@@ -1,5 +1,7 @@
 /project-docs
 /.claude
+/CLAUDE.md
+/PROJECT.md
 /.venv
 /.venv-build-macos
 /build
