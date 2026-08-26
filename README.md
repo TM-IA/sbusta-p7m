@@ -125,6 +125,16 @@ The app is **not code-signed**. To install it:
    ```
 3. Double-click to run, or drag a `.p7m` file onto the app icon.
 
+There's no CI build for macOS (Platypus's build step needs a one-time
+interactive `sudo` to install its command-line tool, not practical on
+a hosted runner). A built `.app` is instead attached manually to a
+[GitHub Release](../../releases) when one is cut.
+
+The app bundle embeds a binary built by
+[Platypus](https://sveinbjorn.org/platypus) (BSD 3-Clause) — see
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) for the license
+text, reproduced as that license requires.
+
 See `macos-launcher/` for the wrapper script and Help content sources.
 
 ## Linux
