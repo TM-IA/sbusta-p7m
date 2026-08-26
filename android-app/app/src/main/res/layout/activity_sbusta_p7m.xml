@@ -5,10 +5,32 @@
     android:orientation="vertical"
     android:padding="16dp">
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/pulsante_apri_file"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/pulsante_apri_file" />
+
+        <Button
+            android:id="@+id/pulsante_aiuto"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/pulsante_aiuto" />
+
+    </LinearLayout>
+
     <TextView
         android:id="@+id/testo_stato"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
         android:textSize="16sp" />
 
     <TextView
@@ -24,6 +46,13 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/pulsante_apri_pdf" />
+
+    <Button
+        android:id="@+id/pulsante_salva_pdf"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/pulsante_salva_pdf" />
 
     <Button
         android:id="@+id/pulsante_esporta_json"

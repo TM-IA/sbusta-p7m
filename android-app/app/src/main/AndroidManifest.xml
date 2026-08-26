@@ -16,6 +16,10 @@
                 <data android:mimeType="application/pkcs7-mime" />
                 <data android:mimeType="application/x-pkcs7-mime" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
         </activity>
 
         <!-- Needed to hand the extracted PDF to another app (the

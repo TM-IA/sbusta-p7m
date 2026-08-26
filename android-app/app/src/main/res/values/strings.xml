@@ -1,7 +1,13 @@
 <resources>
     <string name="app_name">sbusta-p7m</string>
     <string name="titolo_errore">Estrazione fallita</string>
+    <string name="testo_stato_iniziale">Nessun file aperto. Tocca «Apri file .p7m…» per selezionarne uno, oppure apri un allegato .p7m da un’altra app.</string>
+    <string name="pulsante_apri_file">Apri file .p7m…</string>
+    <string name="pulsante_aiuto">Aiuto</string>
     <string name="pulsante_apri_pdf">Apri PDF</string>
+    <string name="pulsante_salva_pdf">Salva PDF…</string>
     <string name="pulsante_esporta_json">Esporta metadati JSON</string>
     <string name="etichetta_firmatari">Firmatari</string>
+    <string name="titolo_aiuto">sbusta-p7m</string>
+    <string name="testo_aiuto">Estrae il PDF contenuto in una busta .p7m (firma digitale CMS/PKCS#7), insieme ai metadati del firmatario.\n\nUso:\n– tocca un allegato .p7m in un’app di posta per aprirlo direttamente qui;\n– oppure tocca «Apri file .p7m…» per scegliere un file dal dispositivo.\n\nDopo l’estrazione:\n– «Apri PDF» lo mostra nel visualizzatore di sistema;\n– «Salva PDF…» lo salva in una cartella a scelta;\n– «Esporta metadati JSON» salva i dati del firmatario in un file .json, in una cartella a scelta.\n\nNessuna validazione crittografica della firma, della catena di certificati o della revoca: solo estrazione strutturale.</string>
 </resources>
