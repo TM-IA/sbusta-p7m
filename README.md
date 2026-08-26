@@ -174,7 +174,8 @@ cross-compiling). See `linux-launcher/` for the wrapper script source.
 
 A native Kotlin app (not a port that reuses the Python core — Android
 can't run a Python script inside a system extension, same constraint
-as macOS) registers to open `.p7m` attachments directly from mail apps:
+as macOS) registers to open `.p7m` attachments directly from mail apps,
+and also appears as a regular app with its own launcher icon:
 
 1. Download the `sbusta-p7m-android-debug` artifact from the latest
    successful run under
@@ -182,12 +183,14 @@ as macOS) registers to open `.p7m` attachments directly from mail apps:
 2. Extract the `.apk` from the downloaded zip.
 3. Enable "Install from unknown sources" for the file (it isn't
    signed for a release/store distribution), then install it.
-4. Tap a `.p7m` attachment in a mail app to open it directly.
+4. Tap a `.p7m` attachment in a mail app to open it directly, or launch
+   the app from the app drawer and pick a file via "Apri file .p7m…".
 
 On opening, it shows a summary of the signer(s) — one entry per
 signature layer, for documents signed more than once — with buttons to
-open the extracted PDF and to optionally export the metadata as JSON
-through the system's file picker.
+open the extracted PDF, save it to a chosen folder, and optionally
+export the metadata as JSON, both through the system's file picker. An
+in-app "Aiuto" button shows brief usage instructions.
 
 Uses [BouncyCastle](https://www.bouncycastle.org/) (`bcpkix-jdk18on`)
 for CMS parsing, same logic as the Python core, ported field for
