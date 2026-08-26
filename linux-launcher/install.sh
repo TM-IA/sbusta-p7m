@@ -7,6 +7,13 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 INSTALL_DIR="$HOME/.local/share/sbusta-p7m"
 
+if [ ! -f "$SCRIPT_DIR/sbusta-p7m-cli" ]; then
+    echo "errore: sbusta-p7m-cli non trovato accanto a install.sh." >&2
+    echo "Questo script va eseguito dal pacchetto estratto (sbusta-p7m-linux-<arch>.tar.gz)," >&2
+    echo "non dalla cartella sorgente linux-launcher/. Vedi README.md, sezione Linux." >&2
+    exit 1
+fi
+
 mkdir -p "$INSTALL_DIR"
 cp "$SCRIPT_DIR/sbusta-p7m-cli" "$INSTALL_DIR/"
 cp "$SCRIPT_DIR/wrapper.sh" "$INSTALL_DIR/"
