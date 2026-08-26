@@ -183,10 +183,17 @@ private fun primoValoreRdn(nome: X500Name, tipo: ASN1ObjectIdentifier): String? 
  * matches — the caller must treat this as "metadata unavailable", not
  * an error: the PDF can still be extracted without it.
  */
+@Suppress("UNCHECKED_CAST")
 private fun trovaCertificatoFirmatario(
     bustaFirmata: CMSSignedData,
     firmatario: SignerInformation,
 ): X509CertificateHolder? {
-    val corrispondenze = bustaFirmata.getCertificates().getMatches(firmatario.getSID())
+    // SignerId implements the raw (unparameterized) Selector interface
+    // on the Java side — Kotlin's stricter generics won't accept it
+    // directly where Selector<X509CertificateHolder> is expected
+    // (verified via a real compile error, not assumed); an explicit
+    // unchecked cast is the standard way to bridge this from Kotlin.
+    val selector = firmatario.getSID() as org.bouncycastle.util.Selector<X509CertificateHolder>
+    val corrispondenze = bustaFirmata.getCertificates().getMatches(selector)
     return corrispondenze.firstOrNull() as? X509CertificateHolder
 }
