@@ -12,6 +12,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import com.tmia.sbustap7m.cms.Firmatario
 import com.tmia.sbustap7m.cms.P7mContentError
 import com.tmia.sbustap7m.cms.P7mFormatError
@@ -73,6 +76,20 @@ class SbustaP7mActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_sbusta_p7m)
+
+        // targetSdk 35+ enforces edge-to-edge by default: content draws
+        // behind the status bar unless it accounts for the inset
+        // itself. A fixed dp margin would be wrong on any device whose
+        // status bar/cutout differs from the one it was tuned on — this
+        // reads the real inset at runtime instead, on top of the
+        // existing 16dp layout padding.
+        val layoutRadice = findViewById<View>(R.id.layout_radice)
+        val paddingBase = layoutRadice.paddingTop
+        ViewCompat.setOnApplyWindowInsetsListener(layoutRadice) { view, insets ->
+            val barreSistema = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.updatePadding(top = paddingBase + barreSistema.top)
+            insets
+        }
 
         testoStato = findViewById(R.id.testo_stato)
         testoFirmatari = findViewById(R.id.testo_firmatari)
