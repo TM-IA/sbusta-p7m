@@ -6,10 +6,18 @@ certificate metadata, saved as a `.json` file next to the PDF.
 
 ## Status
 
-Core extraction logic + CLI only. This is a partial component, not the
-full application described in `PROJECT.md`: no signature/chain/revocation
-validation, no platform integrations yet (Yazi, Nemo, Quick Look,
-Android). Interface and packaging may still change.
+Core extraction logic and a CLI are complete and tested. A native
+launcher/app exists for each target platform — macOS, Linux, Android —
+each at a different stage of real-world verification (see the platform
+sections below). No cryptographic validation of the signature,
+certificate chain, or revocation status: structural extraction only,
+not planned to change.
+
+Not yet done: deeper file-manager/previewer integrations (a Yazi
+preview script, a Nemo thumbnailer, a macOS Quick Look preview pane) —
+today, opening a `.p7m` launches the platform app/wrapper described
+below, it doesn't show an inline preview without launching anything.
+Interface and packaging may still change.
 
 ## Requirements
 
@@ -148,6 +156,32 @@ your distro's package manager first (e.g. `apt install zenity`,
 To build the tarball locally instead of downloading a CI artifact, run
 `build-linux/build.sh` on a matching-architecture Linux machine (no
 cross-compiling). See `linux-launcher/` for the wrapper script source.
+
+## Android
+
+A native Kotlin app (not a port that reuses the Python core — Android
+can't run a Python script inside a system extension, same constraint
+as macOS) registers to open `.p7m` attachments directly from mail apps:
+
+1. Download the `sbusta-p7m-android-debug` artifact from the latest
+   successful run under
+   [Actions](../../actions/workflows/build-android.yml).
+2. Extract the `.apk` from the downloaded zip.
+3. Enable "Install from unknown sources" for the file (it isn't
+   signed for a release/store distribution), then install it.
+4. Tap a `.p7m` attachment in a mail app to open it directly.
+
+On opening, it shows a summary of the signer(s) — one entry per
+signature layer, for documents signed more than once — with buttons to
+open the extracted PDF and to optionally export the metadata as JSON
+through the system's file picker.
+
+Uses [BouncyCastle](https://www.bouncycastle.org/) (`bcpkix-jdk18on`)
+for CMS parsing, same logic as the Python core, ported field for
+field. CI builds the APK and runs unit tests against a synthetically
+signed envelope (`android-app/`); opening a real `.p7m` from an actual
+mail app on a physical device has not been tested yet. No release
+signing, no Play Store/F-Droid distribution in this phase.
 
 ## Known limitations
 
