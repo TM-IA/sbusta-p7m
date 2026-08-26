@@ -20,9 +20,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
+    // No "kotlinOptions" block: it's gone along with the separate
+    // Kotlin plugin (verified via a second real CI failure —
+    // "Unresolved reference 'kotlinOptions'" — not found documented
+    // anywhere, so not guessed at). compileOptions above is what's
+    // left to control Kotlin's JVM target under AGP's built-in Kotlin.
 
     buildFeatures {
         viewBinding = true
