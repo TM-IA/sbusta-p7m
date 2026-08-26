@@ -31,6 +31,13 @@ jobs:
       - name: Build debug APK
         run: gradle assembleDebug --no-daemon
 
+      # One-off diagnostic: print every merged manifest copy Gradle
+      # produced, to see the actual (post-merge) <uses-permission>
+      # list — a permission can be added by a dependency's own AAR
+      # manifest without our AndroidManifest.xml mentioning it.
+      - name: Show merged manifest
+        run: find app/build/intermediates -iname "AndroidManifest.xml" -exec sh -c 'echo "--- {} ---"; cat "{}"' \;
+
       - uses: actions/upload-artifact@v4
         with:
           name: sbusta-p7m-android-debug
