@@ -1,4 +1,5 @@
 name: release
+run-name: "release ${{ github.ref_name }}${{ github.event_name == 'workflow_dispatch' && format(' (test: {0})', inputs.version) || '' }}"
 
 # Builds all three platforms (reusing build-linux.yml/build-android.yml/
 # build-macos.yml as reusable workflows via workflow_call, no duplicated
@@ -97,6 +98,11 @@ jobs:
         uses: softprops/action-gh-release@e598afbe1493e6b1bafb1f389cabb956eab91231 # v3.0.3
         with:
           tag_name: v${{ needs.version.outputs.version }}
+          body: |
+            - Linux (x86_64, aarch64): tarball autonomo
+            - Android: APK firmato
+            - macOS: .app universal2 (non firmato — vedi README per la rimozione quarantena)
+          generate_release_notes: true
           name: v${{ needs.version.outputs.version }}
           draft: ${{ github.event_name == 'workflow_dispatch' }}
           files: |
