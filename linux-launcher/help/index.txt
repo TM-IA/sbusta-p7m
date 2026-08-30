@@ -1,0 +1,20 @@
+sbusta-p7m — Aiuto
+
+Estrae il PDF contenuto in una busta .p7m (firma digitale italiana), insieme ai metadati del firmatario, salvati in un file .json a lato.
+
+COME SI USA
+
+- Dal menu applicazioni: si apre un dialogo che chiede se elaborare un file .p7m singolo o tutti i file in una cartella, poi la cartella di destinazione.
+- Trascina un file .p7m sull'icona (o "Apri con..." dal file manager): estrazione diretta, nessun dialogo, risultato nella stessa cartella del file sorgente.
+
+COSA VIENE PRODOTTO
+
+Per ogni nome.p7m, una sottocartella nome/ contenente nome.pdf e nome.json (metadati del firmatario: nome, organizzazione, numero seriale, validità, algoritmo, data/ora di firma). Se il documento è stato firmato più volte, il JSON elenca un firmatario per ogni livello di busta attraversato.
+
+LOG
+
+Ogni esecuzione aggiunge un blocco datato a sbusta-p7m-log.txt, nella cartella di destinazione — utile per rivedere cosa è stato estratto ed eventuali errori.
+
+LIMITI NOTI
+
+Nessuna validazione crittografica della firma, della catena di certificazione o dello stato di revoca: solo estrazione strutturale del contenuto.

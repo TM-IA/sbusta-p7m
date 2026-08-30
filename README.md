@@ -1,5 +1,7 @@
 # sbusta-p7m
 
+Documentazione in inglese più sotto in questo stesso file.
+
 Extract the PDF embedded in a `.p7m` envelope (CMS/PKCS#7, the format
 used by Italian digital signatures), together with the signer's
 certificate metadata, saved as a `.json` file next to the PDF.
@@ -22,7 +24,7 @@ Interface and packaging may still change.
 ## Requirements
 
 - Python 3.9+
-- [pipx](https://pipx.pypa.io/) (recommended for a standalone `sbusta-p7m`
+- [pipx](https://pipx.pypa.io/) (recommended for a standalone `sbusta-py-p7m`
   command), or plain `pip`/`venv`
 
 ## Install
@@ -33,7 +35,7 @@ cd sbusta-p7m
 pipx install .
 ```
 
-This installs a standalone `sbusta-p7m` command, independent from any
+This installs a standalone `sbusta-py-p7m` command, independent from any
 project virtual environment. To pick up local source changes, reinstall
 with `pipx install . --force`.
 
@@ -48,8 +50,8 @@ python3 -m venv .venv
 ## Usage
 
 ```sh
-sbusta-p7m <file.p7m>
-sbusta-p7m <folder> [-r] [-d <destination>]
+sbusta-py-p7m <file.p7m>
+sbusta-py-p7m <folder> [-r] [-d <destination>]
 ```
 
 - `percorso` (positional): a single `.p7m` file, or a folder. If it's a
@@ -157,7 +159,10 @@ workflow itself:
    cd sbusta-p7m-linux-<arch>
    ./install.sh
    ```
-   Copies everything to `~/.local/share/sbusta-p7m/` and registers a
+   Copies the GUI wrapper, help, and icon to `~/.local/share/sbusta-p7m/`,
+   the standalone `sbusta-p7m` executable to `~/.local/bin/sbusta-p7m`
+   (also usable directly from a terminal, same CLI interface as
+   `sbusta-py-p7m` above but with no Python dependency), and registers a
    `.desktop` menu entry (also associated with `.p7m` files, so it
    shows up in a file manager's "Open With").
 4. To remove it later: `~/.local/share/sbusta-p7m/uninstall.sh`.

@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=sbusta-p7m
-Comment=Extract the PDF and signer metadata embedded in .p7m (CMS/PKCS#7) envelopes
+Comment=Estrae il PDF e i metadati del firmatario contenuti in una busta .p7m (CMS/PKCS#7)
 Exec=__INSTALL_DIR__/wrapper.sh %F
 Icon=__INSTALL_DIR__/icon.png
 Terminal=false

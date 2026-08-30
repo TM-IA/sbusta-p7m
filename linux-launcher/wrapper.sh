@@ -1,5 +1,5 @@
 #!/bin/sh
-# zenity wrapper: native dialogs around the bundled sbusta-p7m-cli
+# zenity wrapper: native dialogs around the bundled sbusta-p7m
 # (Linux). Ported from the macOS Platypus wrapper — same logic,
 # adapted to zenity's button model (see notes below). Built and
 # exercised for the first time via GitHub Actions CI; no local Linux
@@ -13,8 +13,8 @@ set -u
 # necessarily set cwd to the install folder the way Platypus does on
 # macOS by running the script from Resources/).
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-CLI="$SCRIPT_DIR/sbusta-p7m-cli"
-HELP_HTML="$SCRIPT_DIR/help/index.html"
+CLI="$HOME/.local/bin/sbusta-p7m"
+HELP_TXT="$SCRIPT_DIR/help/index.txt"
 
 scrivi_log_e_mostra() {
     # $1: exit code, $2: full CLI output (stdout+stderr), $3: folder to
@@ -87,51 +87,76 @@ fi
 # the exit code. This differs from macOS's "display dialog", which
 # returns each button's name directly; ported carefully, not assumed
 # to behave the same.
-while :; do
+# Wizard-style navigation with a real "back" across 3 levels: Annulla/
+# Esc/window close at any level returns to the level above, it doesn't
+# exit the app — only level 1 (nothing above it) is a real exit.
+# Implemented with `continue 2` / `break 2` (nested loop levels):
+# standard POSIX syntax (not a bashism), verified here where /bin/sh is
+# bash, but not tested against dash in this session (on Debian/Ubuntu
+# /bin/sh is dash) — to be reconfirmed if issues show up there.
+while :; do  # level 1: File / Cartella / Aiuto
+    # --no-cancel is not supported by this dialog type (verified:
+    # zenity exits immediately with "--no-cancel is not supported for
+    # this dialog"), so the Cancel button can't be hidden: it stays
+    # visible, relabeled "Annulla".
     risposta=$(zenity --question --title="sbusta-p7m" \
         --text="Estrarre un file .p7m singolo o tutti i file in una cartella?" \
-        --ok-label="File" --cancel-label="Cartella" --extra-button="Aiuto" 2>/dev/null)
+        --ok-label="File" --cancel-label="Annulla" \
+        --extra-button="Cartella" --extra-button="Aiuto" 2>/dev/null)
     ret=$?
     if [ "$ret" -eq 0 ]; then
         tipo="File"
+    elif [ "$risposta" = "Cartella" ]; then
+        tipo="Cartella"
     elif [ "$risposta" = "Aiuto" ]; then
-        xdg-open "$HELP_HTML" >/dev/null 2>&1 &
+        zenity --text-info --title="sbusta-p7m — Aiuto" \
+            --filename="$HELP_TXT" --width=560 --height=440 2>/dev/null
         continue
     else
-        tipo="Cartella"
-    fi
-    break
-done
-
-if [ "$tipo" = "File" ]; then
-    percorso=$(zenity --file-selection --title="Seleziona un file .p7m" \
-        --file-filter="*.p7m" 2>/dev/null) || exit 0
-    ricorsivo=""
-else
-    percorso=$(zenity --file-selection --directory \
-        --title="Seleziona una cartella" 2>/dev/null) || exit 0
-    ricorsivo="-r"
-fi
-
-# Same three-way choice as macOS (0.1.7): "Annulla" genuinely aborts,
-# it does not mean "proceed with the source folder" — that was a real
-# bug there, not repeated here from the start.
-destinazione=""
-while :; do
-    scelta=$(zenity --question --title="sbusta-p7m" \
-        --text="Cartella di destinazione?" \
-        --ok-label="Cartella sorgente" --cancel-label="Annulla" \
-        --extra-button="Scegli..." 2>/dev/null)
-    ret=$?
-    if [ "$ret" -eq 0 ]; then
-        break
-    elif [ "$scelta" = "Scegli..." ]; then
-        destinazione=$(zenity --file-selection --directory \
-            --title="Cartella di destinazione" 2>/dev/null)
-        [ -n "$destinazione" ] && break
-    else
+        # No level above this one: Annulla/Esc/window close really do
+        # exit the app.
         exit 0
     fi
+
+    while :; do  # level 2: source file/folder selection
+        if [ "$tipo" = "File" ]; then
+            percorso=$(zenity --file-selection --title="Seleziona un file .p7m" \
+                --file-filter="*.p7m" 2>/dev/null) || continue 2
+            ricorsivo=""
+        else
+            percorso=$(zenity --file-selection --directory \
+                --title="Seleziona una cartella" 2>/dev/null) || continue 2
+            ricorsivo="-r"
+        fi
+
+        # Same three-way choice as macOS (0.1.7): "Annulla" genuinely
+        # aborts, it does not mean "proceed with the source folder" —
+        # that was a real bug there, not repeated here from the start.
+        destinazione=""
+        annullato=0
+        while :; do  # level 3: destination folder
+            scelta=$(zenity --question --title="sbusta-p7m" \
+                --text="Cartella di destinazione?" \
+                --ok-label="Cartella sorgente" --cancel-label="Annulla" \
+                --extra-button="Scegli..." 2>/dev/null)
+            ret=$?
+            if [ "$ret" -eq 0 ]; then
+                break
+            elif [ "$scelta" = "Scegli..." ]; then
+                destinazione=$(zenity --file-selection --directory \
+                    --title="Cartella di destinazione" 2>/dev/null)
+                [ -n "$destinazione" ] && break
+            else
+                # Annulla/Esc at level 3: goes back to level 2 (re-pick
+                # source file/folder), doesn't exit the app.
+                annullato=1
+                break
+            fi
+        done
+        [ "$annullato" -eq 1 ] && continue
+
+        break 2  # proceeds to extraction, exiting both loops
+    done
 done
 
 if [ -n "$destinazione" ]; then

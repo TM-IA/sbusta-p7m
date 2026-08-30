@@ -87,7 +87,7 @@ def estrai(percorso_p7m):
         except Exception as e:
             if livello == 0:
                 raise P7mFormatError(
-                    f"'{percorso_p7m}' is not a valid ASN.1/CMS structure"
+                    f"'{percorso_p7m}' non è una struttura ASN.1/CMS valida"
                 ) from e
             # Not a nested CMS envelope: `data` is the final raw content.
             break
@@ -95,8 +95,8 @@ def estrai(percorso_p7m):
         if content_info["content_type"].native != "signed_data":
             if livello == 0:
                 raise P7mFormatError(
-                    f"'{percorso_p7m}' is a CMS envelope but not of type "
-                    f"signed_data (got '{content_info['content_type'].native}')"
+                    f"'{percorso_p7m}' è una busta CMS ma non di tipo "
+                    f"signed_data (trovato '{content_info['content_type'].native}')"
                 )
             # Some other CMS content type we don't know how to unwrap
             # further (e.g. enveloped/encrypted data): give up here.
@@ -109,8 +109,8 @@ def estrai(percorso_p7m):
         if inner_bytes is None:
             if livello == 0:
                 raise P7mContentError(
-                    f"'{percorso_p7m}' has a detached signature (no embedded "
-                    "content), not supported in this phase"
+                    f"'{percorso_p7m}' ha una firma detached (nessun contenuto "
+                    "incorporato), non supportata in questa fase"
                 )
             # A detached envelope was found while unwrapping an inner
             # layer: there is nothing further to extract from it, keep

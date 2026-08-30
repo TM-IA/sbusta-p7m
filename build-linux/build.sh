@@ -17,7 +17,7 @@ build-linux/.venv/bin/pip install asn1crypto pyinstaller
 
 echo "== 2/4: PyInstaller ($ARCH) =="
 build-linux/.venv/bin/pyinstaller \
-    --name sbusta-p7m-cli \
+    --name sbusta-p7m \
     --onefile \
     --paths . \
     --distpath build-linux/dist \
@@ -41,14 +41,14 @@ PKG="sbusta-p7m-linux-$ARCH"
 STAGE="build-linux/dist/$PKG"
 rm -rf "$STAGE"
 mkdir -p "$STAGE"
-cp build-linux/dist/sbusta-p7m-cli "$STAGE/"
+cp build-linux/dist/sbusta-p7m "$STAGE/"
 cp linux-launcher/wrapper.sh "$STAGE/"
 cp -r linux-launcher/help "$STAGE/"
 cp linux-launcher/sbusta-p7m.desktop "$STAGE/"
 cp linux-launcher/install.sh "$STAGE/"
 cp linux-launcher/uninstall.sh "$STAGE/"
 cp build-linux/dist/icon.png "$STAGE/"
-chmod +x "$STAGE/wrapper.sh" "$STAGE/sbusta-p7m-cli" "$STAGE/install.sh" "$STAGE/uninstall.sh"
+chmod +x "$STAGE/wrapper.sh" "$STAGE/sbusta-p7m" "$STAGE/install.sh" "$STAGE/uninstall.sh"
 
 tar -C build-linux/dist -czf "build-linux/dist/$PKG.tar.gz" "$PKG"
 

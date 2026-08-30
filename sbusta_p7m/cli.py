@@ -111,21 +111,21 @@ def _elabora_file(percorso_p7m, cartella_destinazione):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
-        description="Extract the PDF and signer metadata embedded in .p7m (CMS/PKCS#7) envelopes."
+        description="Estrae il PDF e i metadati del firmatario contenuti in una busta .p7m (CMS/PKCS#7)."
     )
     parser.add_argument(
         "percorso",
-        help="path to a .p7m file, or a folder containing .p7m files",
+        help="percorso di un file .p7m, o di una cartella contenente file .p7m",
     )
     parser.add_argument(
         "-d", "--destinazione",
-        help="output folder for the extracted .pdf/.json files "
-             "(default: same folder as each source file)",
+        help="cartella di destinazione per i file .pdf/.json estratti "
+             "(predefinita: la stessa cartella del file sorgente)",
     )
     parser.add_argument(
         "-r", "--ricorsivo",
         action="store_true",
-        help="when percorso is a folder, search .p7m files recursively",
+        help="se percorso è una cartella, cerca i file .p7m ricorsivamente",
     )
     args = parser.parse_args(argv)
 

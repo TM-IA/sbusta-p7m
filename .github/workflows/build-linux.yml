@@ -47,7 +47,7 @@ jobs:
           openssl cms -sign -in /tmp/test.pdf -signer /tmp/cert.pem -inkey /tmp/key.pem \
               -outform DER -binary -nodetach -out /tmp/test.p7m
           PKG_DIR="build-linux/dist/sbusta-p7m-linux-${{ matrix.arch }}"
-          "$PKG_DIR/sbusta-p7m-cli" /tmp/test.p7m -d /tmp/out
+          "$PKG_DIR/sbusta-p7m" /tmp/test.p7m -d /tmp/out
           test -f /tmp/out/test/test.pdf
           test -f /tmp/out/test/test.json
           grep -q "CI Test Signer" /tmp/out/test/test.json
@@ -57,7 +57,7 @@ jobs:
         run: |
           set -eu
           PKG_DIR="build-linux/dist/sbusta-p7m-linux-${{ matrix.arch }}"
-          for f in sbusta-p7m-cli wrapper.sh help/index.html sbusta-p7m.desktop install.sh uninstall.sh icon.png; do
+          for f in sbusta-p7m wrapper.sh help/index.html help/index.txt sbusta-p7m.desktop install.sh uninstall.sh icon.png; do
               test -f "$PKG_DIR/$f" || { echo "manca $f nel pacchetto" >&2; exit 1; }
           done
           echo "struttura pacchetto OK"

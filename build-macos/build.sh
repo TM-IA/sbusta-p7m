@@ -15,7 +15,7 @@ fi
 
 echo "== 1/4: PyInstaller (universal2) =="
 .venv-build-macos/bin/pyinstaller \
-    --name sbusta-p7m-cli \
+    --name sbusta-p7m \
     --onefile \
     --target-arch universal2 \
     --paths . \
@@ -36,7 +36,7 @@ platypus \
     -p /bin/sh \
     -D \
     -X "p7m" \
-    -f build-macos/dist/sbusta-p7m-cli \
+    -f build-macos/dist/sbusta-p7m \
     -f "macos-launcher/sbusta-p7m Help.help" \
     -i "$ICON" \
     -u "TM-IA" \

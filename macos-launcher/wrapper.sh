@@ -1,5 +1,5 @@
 #!/bin/sh
-# Platypus wrapper: native dialogs around the bundled sbusta-p7m-cli.
+# Platypus wrapper: native dialogs around the bundled sbusta-p7m.
 
 set -u
 
@@ -8,7 +8,7 @@ set -u
 # bundled PyInstaller executable sits right here, referenced with a
 # relative path — no PATH resolution, no external installation needed
 # on the recipient's system.
-CLI="./sbusta-p7m-cli"
+CLI="./sbusta-p7m"
 
 scrivi_log_e_mostra() {
     # $1: exit code, $2: full CLI output (stdout+stderr), $3: folder to
@@ -90,10 +90,13 @@ fi
 # single source of truth with the registered Help Book's own page.
 HELP_HTML="./sbusta-p7m Help.help/Contents/Resources/it.lproj/index.html"
 
-# Interactive mode (double-click, no dropped files): ask what to process.
-# "Aiuto" opens the HTML page directly (guaranteed correct content);
-# then re-asks, it doesn't just exit.
-while :; do
+# Wizard-style navigation with a real "back" across 3 levels, same
+# structure already validated on Linux (linux-launcher/wrapper.sh):
+# Annulla/Esc at any level returns to the level above, it doesn't exit
+# the app — only level 1 (nothing above it) is a real exit. Not tested
+# on a real Mac in this session (no macOS toolchain available here):
+# to be verified on the next local build.
+while :; do  # level 1: File / Cartella / Aiuto
     tipo=$(osascript <<'EOF' 2>/dev/null
 display dialog "Estrarre un file .p7m singolo o tutti i file in una cartella?" buttons {"File", "Cartella", "Aiuto"} default button "File" with title "sbusta-p7m"
 button returned of result
@@ -101,43 +104,68 @@ EOF
     ) || exit 0
 
     if [ "$tipo" = "Aiuto" ]; then
-        open "$HELP_HTML"
+        # Same channel as the system Aiuto menu (the "help:" URL
+        # scheme, Help Viewer, not the browser): not verified on a real
+        # Mac in this session, falls back to "open $HELP_HTML" if it
+        # fails.
+        if ! open "help:bookID='com.tm-ia.sbusta-p7m.help'" 2>/dev/null; then
+            open "$HELP_HTML"
+        fi
         continue
     fi
-    break
-done
 
-if [ "$tipo" = "File" ]; then
-    percorso=$(osascript -e 'POSIX path of (choose file with prompt "Seleziona un file .p7m:")' 2>/dev/null) || exit 0
-    ricorsivo=""
-else
-    percorso=$(osascript -e 'POSIX path of (choose folder with prompt "Seleziona una cartella:")' 2>/dev/null) || exit 0
-    ricorsivo="-r"
-fi
+    while :; do  # level 2: source file/folder selection
+        if [ "$tipo" = "File" ]; then
+            percorso=$(osascript -e 'POSIX path of (choose file with prompt "Seleziona un file .p7m:")' 2>/dev/null) || continue 2
+            ricorsivo=""
+        else
+            percorso=$(osascript -e 'POSIX path of (choose folder with prompt "Seleziona una cartella:")' 2>/dev/null) || continue 2
+            ricorsivo="-r"
+        fi
 
-# Explicit three-way choice instead of overloading a native folder
-# picker's Cancel button: "Annulla" here genuinely aborts (matches
-# what Cancel means everywhere else), it does NOT mean "proceed with
-# the source folder" as an earlier version of this script did.
-destinazione=""
-while :; do
-    scelta=$(osascript <<'EOF' 2>/dev/null
+        # Explicit three-way choice instead of overloading a native
+        # folder picker's Cancel button: "Annulla" here genuinely
+        # aborts back to level 2 (matches what Cancel means everywhere
+        # else), it does NOT mean "proceed with the source folder" as
+        # an earlier version of this script did.
+        destinazione=""
+        annullato=0
+        while :; do  # level 3: destination folder
+            scelta=$(osascript <<'EOF' 2>/dev/null
 display dialog "Cartella di destinazione?" buttons {"Annulla", "Cartella sorgente", "Scegli..."} default button "Cartella sorgente" with title "sbusta-p7m"
 button returned of result
 EOF
-    ) || exit 0
+            )
+            ret=$?
+            if [ "$ret" -ne 0 ]; then
+                # Esc or window close: same effect as "Annulla".
+                annullato=1
+                break
+            fi
+            case "$scelta" in
+                Annulla)
+                    annullato=1
+                    break
+                    ;;
+                "Cartella sorgente")
+                    break
+                    ;;
+                "Scegli...")
+                    destinazione=$(osascript -e 'POSIX path of (choose folder with prompt "Cartella di destinazione:")' 2>/dev/null)
+                    # If this inner picker is itself cancelled,
+                    # $destinazione stays empty and we loop back to
+                    # the three-way choice above, instead of guessing
+                    # what the user meant.
+                    [ -n "$destinazione" ] && break
+                    ;;
+            esac
+        done
+        # Annulla/Esc at level 3: goes back to level 2 (re-pick source
+        # file/folder), doesn't exit the app.
+        [ "$annullato" -eq 1 ] && continue
 
-    case "$scelta" in
-        Annulla) exit 0 ;;
-        "Cartella sorgente") break ;;
-        "Scegli...")
-            destinazione=$(osascript -e 'POSIX path of (choose folder with prompt "Cartella di destinazione:")' 2>/dev/null)
-            # If this inner picker is itself cancelled, $destinazione
-            # stays empty and we loop back to the three-way choice
-            # above, instead of guessing what the user meant.
-            [ -n "$destinazione" ] && break
-            ;;
-    esac
+        break 2  # proceeds to extraction, exiting both loops
+    done
 done
 
 if [ -n "$destinazione" ]; then

@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.scripts]
-sbusta-p7m = "sbusta_p7m.cli:main"
+sbusta-py-p7m = "sbusta_p7m.cli:main"
 
 [tool.setuptools]
 packages = ["sbusta_p7m"]
