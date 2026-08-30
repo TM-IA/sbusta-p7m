@@ -28,8 +28,18 @@ jobs:
       - name: Unit tests (JVM, no emulator)
         run: gradle test --no-daemon
 
-      - name: Build debug APK
-        run: gradle assembleDebug --no-daemon
+      - name: Decode release keystore
+        run: |
+          set -eu
+          echo "$SBUSTA_P7M_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/sbusta-p7m-release.jks"
+        env:
+          SBUSTA_P7M_KEYSTORE_BASE64: ${{ secrets.SBUSTA_P7M_KEYSTORE_BASE64 }}
+
+      - name: Build release APK (signed)
+        run: gradle assembleRelease --no-daemon
+        env:
+          SBUSTA_P7M_KEYSTORE_PATH: ${{ runner.temp }}/sbusta-p7m-release.jks
+          SBUSTA_P7M_KEYSTORE_PASSWORD: ${{ secrets.SBUSTA_P7M_KEYSTORE_PASSWORD }}
 
       # One-off diagnostic: print every merged manifest copy Gradle
       # produced, to see the actual (post-merge) <uses-permission>
@@ -40,5 +50,5 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: sbusta-p7m-android-debug
-          path: android-app/app/build/outputs/apk/debug/*.apk
+          name: sbusta-p7m-android-release
+          path: android-app/app/build/outputs/apk/release/*.apk

@@ -15,6 +15,31 @@ android {
         versionName = "0.2.0"
     }
 
+    // Release signing: keystore path/passwords come from environment
+    // variables (set by CI from GitHub Secrets), never committed.
+    // Locally, with none of these set, the release build type just
+    // falls back to unsigned — intentional, nobody needs to build a
+    // signed release outside CI.
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("SBUSTA_P7M_KEYSTORE_PATH")
+            if (keystorePath != null) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("SBUSTA_P7M_KEYSTORE_PASSWORD")
+                keyAlias = "sbusta-p7m"
+                keyPassword = System.getenv("SBUSTA_P7M_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            if (System.getenv("SBUSTA_P7M_KEYSTORE_PATH") != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
