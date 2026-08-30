@@ -1,0 +1,144 @@
+name: build-macos
+
+# EXPERIMENTAL feasibility prototype, not the real packaging pipeline.
+#
+# Question being tested: can the macOS .app actually be built on a
+# GitHub-hosted runner, or does Platypus's command-line tool really
+# need an interactive sudo prompt as README.md currently claims?
+# Findings so far (not yet verified by an actual run of this
+# workflow):
+# - sveinbjornt/setup-platypus installs the Platypus CLI via
+#   `sudo bash InstallCommandLineTool.sh`. GitHub-hosted macOS runners
+#   have passwordless sudo configured by default (runner
+#   ALL=(root) NOPASSWD:ALL in /etc/sudoers.d/runner), so this should
+#   run non-interactively — but a related bug has been reported
+#   (actions/runner-images#10484, "sudo -v" failing with "a terminal
+#   is required" on some macOS images despite that config), so this
+#   needs an actual run to confirm, not just documentation.
+# - actions/setup-python's macOS builds may not be universal2 (an
+#   earlier attempt to add that was merged then reverted), so this
+#   downloads the official python.org universal2 installer directly
+#   instead, same requirement build-macos/build.sh documents for a
+#   local build.
+# - PyInstaller's direct --target-arch universal2 needs every wheel
+#   involved to itself be (or resolve to) universal2; if a dependency
+#   only ships thin wheels, that single-shot build can fail even with
+#   a universal2 Python. Fallback: build arm64 first, then x86_64,
+#   each as a thin binary, then merge with `lipo` — slower but doesn't
+#   depend on any wheel being pre-built universal2.
+#
+# Deliberately NOT wired to push triggers, and NOT using the project's
+# real build-macos/build.sh as-is (no Help Book bundling/registration
+# here) — this workflow only answers the feasibility question above.
+# Folding a working version of this into the real pipeline (Help Book,
+# README) is a separate follow-up decision once this is confirmed to
+# work at all.
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Platypus command line tool
+        uses: sveinbjornt/setup-platypus@v1
+        with:
+          version: '5.5.0'
+
+      - name: Verify Platypus CLI
+        run: platypus -v
+
+      - name: Install universal2 Python from python.org
+        run: |
+          set -eu
+          PY_VERSION="3.13.15"
+          curl -fsSL -o python.pkg \
+              "https://www.python.org/ftp/python/${PY_VERSION}/python-${PY_VERSION}-macos11.pkg"
+          sudo installer -pkg python.pkg -target /
+          echo "PYBIN=/Library/Frameworks/Python.framework/Versions/3.13/bin/python3" >> "$GITHUB_ENV"
+
+      - name: Verify the installed Python is actually universal2
+        run: |
+          set -eu
+          "$PYBIN" --version
+          file "$PYBIN"
+          # Expect two architectures (x86_64 and arm64) in the output.
+          file "$PYBIN" | grep -q "2 architectures" || {
+              echo "errore: il Python installato non è universal2" >&2
+              exit 1
+          }
+
+      - name: Build PyInstaller (universal2, arm64+x86_64/lipo fallback)
+        run: |
+          set -eu
+          "$PYBIN" -m venv .venv-build-macos
+          .venv-build-macos/bin/pip install --upgrade pip
+          .venv-build-macos/bin/pip install asn1crypto pyinstaller
+
+          # $1: --target-arch value, $2: PyInstaller --name (and output
+          # filename under build-macos/dist/).
+          build_arch() {
+              .venv-build-macos/bin/pyinstaller \
+                  --name "$2" \
+                  --onefile \
+                  --target-arch "$1" \
+                  --paths . \
+                  --distpath build-macos/dist \
+                  --workpath "build-macos/work-$2" \
+                  --specpath build-macos \
+                  --noconfirm \
+                  build-macos/entry.py
+          }
+
+          if build_arch universal2 sbusta-p7m; then
+              echo "build universal2 diretto riuscito"
+          else
+              echo "build universal2 diretto fallito: ripiego su arm64 + x86_64 separati, poi lipo"
+              build_arch arm64 sbusta-p7m-arm64
+              build_arch x86_64 sbusta-p7m-x86_64
+              lipo -create -output build-macos/dist/sbusta-p7m \
+                  build-macos/dist/sbusta-p7m-arm64 \
+                  build-macos/dist/sbusta-p7m-x86_64
+          fi
+
+      - name: Verify the built CLI is a universal2 binary
+        run: |
+          set -eu
+          file build-macos/dist/sbusta-p7m
+          file build-macos/dist/sbusta-p7m | grep -q "2 architectures" || {
+              echo "errore: l'eseguibile PyInstaller non è universal2" >&2
+              exit 1
+          }
+
+      - name: Wrap with Platypus (no Help Book — feasibility only)
+        run: |
+          set -eu
+          platypus \
+              -a "sbusta-p7m" \
+              -o "None" \
+              -p /bin/sh \
+              -D \
+              -X "p7m" \
+              -f build-macos/dist/sbusta-p7m \
+              -i "macos-launcher/AppIcon.icns" \
+              -u "TM-IA" \
+              -V "0.0.0-ci-prototype" \
+              -I "com.tm-ia.sbusta-p7m.ci-prototype" \
+              -y \
+              macos-launcher/wrapper.sh \
+              build-macos/dist/sbusta-p7m.app
+
+      - name: Verify the .app bundle
+        run: |
+          set -eu
+          test -d build-macos/dist/sbusta-p7m.app
+          test -x "build-macos/dist/sbusta-p7m.app/Contents/Resources/sbusta-p7m"
+          file "build-macos/dist/sbusta-p7m.app/Contents/Resources/sbusta-p7m"
+          echo "prototipo riuscito: .app costruito interamente in CI"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbusta-p7m-macos-ci-prototype
+          path: build-macos/dist/sbusta-p7m.app

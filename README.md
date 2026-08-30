@@ -114,11 +114,9 @@ Produces `build-macos/dist/sbusta-p7m.app`, a universal2 binary
 [Platypus](https://sveinbjorn.org/platypus). Requires, on the build
 machine: a universal2 Python (Homebrew's own Python is arch-specific,
 not enough — use the official
-[python.org installer](https://www.python.org/downloads/macos/)),
-Platypus itself
-(with its command-line tool installed), and an `AppIcon.icns` at
-`project-docs/icon/AppIcon.icns` — that path isn't part of this
-repository, provide your own icon there before building.
+[python.org installer](https://www.python.org/downloads/macos/)), and
+Platypus itself (with its command-line tool installed). The icon
+(`macos-launcher/AppIcon.icns`) is part of this repository.
 
 The app is **not code-signed**. To install it:
 

@@ -7,9 +7,9 @@ set -eu
 
 cd "$(dirname "$0")/.."
 
-ICON="project-docs/icon/AppIcon.icns"
+ICON="macos-launcher/AppIcon.icns"
 if [ ! -f "$ICON" ]; then
-    echo "errore: icona non trovata in '$ICON' (project-docs collegato?)" >&2
+    echo "errore: icona non trovata in '$ICON'" >&2
     exit 1
 fi
 
