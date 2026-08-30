@@ -1,20 +1,19 @@
 name: build-macos
 
-# EXPERIMENTAL feasibility prototype, not the real packaging pipeline.
+# Builds the macOS .app entirely on a GitHub-hosted runner — started
+# as a feasibility prototype (README claimed this needed an
+# interactive sudo, "not practical on a hosted runner"; confirmed
+# false on a real run) and now confirmed working end-to-end on real
+# hardware: build, packaging, Help Book, and the wrapper's dialog
+# navigation all verified by hand on a real Mac. Callable standalone
+# (workflow_dispatch, for a quick feasibility/regression check) or as
+# a step of release.yml (workflow_call).
 #
-# Question being tested: can the macOS .app actually be built on a
-# GitHub-hosted runner, or does Platypus's command-line tool really
-# need an interactive sudo prompt as README.md currently claims?
-# Findings so far (not yet verified by an actual run of this
-# workflow):
+# Notes on how it works, kept from the original investigation:
 # - sveinbjornt/setup-platypus installs the Platypus CLI via
-#   `sudo bash InstallCommandLineTool.sh`. GitHub-hosted macOS runners
-#   have passwordless sudo configured by default (runner
-#   ALL=(root) NOPASSWD:ALL in /etc/sudoers.d/runner), so this should
-#   run non-interactively — but a related bug has been reported
-#   (actions/runner-images#10484, "sudo -v" failing with "a terminal
-#   is required" on some macOS images despite that config), so this
-#   needs an actual run to confirm, not just documentation.
+#   `sudo bash InstallCommandLineTool.sh`; works non-interactively
+#   because GitHub-hosted macOS runners have passwordless sudo by
+#   default (runner ALL=(root) NOPASSWD:ALL in /etc/sudoers.d/runner).
 # - actions/setup-python's macOS builds may not be universal2 (an
 #   earlier attempt to add that was merged then reverted), so this
 #   downloads the official python.org universal2 installer directly
@@ -25,15 +24,27 @@ name: build-macos
 #   only ships thin wheels, that single-shot build can fail even with
 #   a universal2 Python. Fallback: build arm64 first, then x86_64,
 #   each as a thin binary, then merge with `lipo` — slower but doesn't
-#   depend on any wheel being pre-built universal2.
+#   depend on any wheel being pre-built universal2. Not exercised yet
+#   (the direct universal2 build has succeeded every time so far).
 #
-# Deliberately NOT wired to push triggers — this workflow only answers
-# the feasibility question above. Folding a working version of this
-# into the real pipeline (replacing/joining the local-only
-# build-macos/build.sh, README updates) is a separate follow-up
-# decision once this is confirmed to work at all.
+# Still not done here: this doesn't touch build-macos/build.sh (the
+# documented local-build path) or README — both still describe a
+# local-only build. Left as is until this CI path has more mileage.
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version string for -V (e.g. 0.2.0)'
+        type: string
+        required: false
+        default: '0.0.0-dev'
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version string for -V (e.g. from a release tag)'
+        type: string
+        required: false
+        default: '0.0.0-dev'
 
 jobs:
   build:
@@ -133,8 +144,8 @@ jobs:
               -f "macos-launcher/sbusta-p7m Help.help" \
               -i "macos-launcher/AppIcon.icns" \
               -u "TM-IA" \
-              -V "0.0.0-ci-prototype" \
-              -I "com.tm-ia.sbusta-p7m.ci-prototype" \
+              -V "${{ inputs.version }}" \
+              -I "com.tm-ia.sbusta-p7m" \
               -y \
               macos-launcher/wrapper.sh \
               build-macos/dist/sbusta-p7m.app
@@ -162,7 +173,7 @@ jobs:
           test -x "build-macos/dist/sbusta-p7m.app/Contents/Resources/sbusta-p7m"
           test -d "build-macos/dist/sbusta-p7m.app/Contents/Resources/sbusta-p7m Help.help"
           file "build-macos/dist/sbusta-p7m.app/Contents/Resources/sbusta-p7m"
-          echo "prototipo riuscito: .app costruito interamente in CI, Help Book incluso"
+          echo ".app costruito interamente in CI, Help Book incluso"
 
       - name: Zip the .app bundle (ditto preserves the .app folder name)
         # actions/upload-artifact uploads a given folder's *contents*,
@@ -184,5 +195,5 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: sbusta-p7m-macos-ci-prototype
+          name: sbusta-p7m-macos
           path: build-macos/dist/sbusta-p7m.app.zip

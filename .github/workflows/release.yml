@@ -1,0 +1,88 @@
+name: release
+
+# Builds all three platforms (reusing build-linux.yml/build-android.yml/
+# build-macos.yml as reusable workflows via workflow_call, no duplicated
+# build logic) and attaches the results to a GitHub Release.
+#
+# Two ways to run it:
+# - Push a tag matching v* (e.g. v0.3.0): builds, then publishes a real,
+#   non-draft release tagged with that name.
+# - workflow_dispatch with a version input: same build, but publishes a
+#   DRAFT release instead (doesn't create a real git tag until a human
+#   reviews and publishes it from the GitHub UI) — for testing this
+#   pipeline itself without polluting the repo's tag list.
+#
+# Known gap: only the macOS build's version string (-V) is driven by
+# this workflow's computed version. Android's versionName/versionCode
+# (android-app/app/build.gradle.kts) and the Python core's version
+# (pyproject.toml) are each their own hardcoded value, not synchronized
+# to the release tag — pre-existing drift (Android was already at
+# 0.2.0 while pyproject.toml was at 0.1.0 before this workflow existed),
+# not something this workflow fixes.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 0.2.1) — for a manual/test run; a real tag push derives it from the tag name instead'
+        type: string
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.compute.outputs.version }}
+    steps:
+      - name: Compute version string
+        id: compute
+        run: |
+          set -eu
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            v="${{ inputs.version }}"
+          else
+            v="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+  build-linux:
+    needs: version
+    uses: ./.github/workflows/build-linux.yml
+
+  build-android:
+    needs: version
+    uses: ./.github/workflows/build-android.yml
+    secrets: inherit
+
+  build-macos:
+    needs: version
+    uses: ./.github/workflows/build-macos.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+
+  publish:
+    needs: [version, build-linux, build-android, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: List downloaded assets
+        run: find dist -type f
+
+      - name: Publish release
+        uses: softprops/action-gh-release@e598afbe1493e6b1bafb1f389cabb956eab91231 # v3.0.3
+        with:
+          tag_name: v${{ needs.version.outputs.version }}
+          name: v${{ needs.version.outputs.version }}
+          draft: ${{ github.event_name == 'workflow_dispatch' }}
+          files: |
+            dist/**/*.tar.gz
+            dist/**/*.apk
+            dist/**/*.zip
