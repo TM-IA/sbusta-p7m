@@ -84,20 +84,17 @@ $out
     exit "$esito_totale"
 fi
 
-# No in-dialog "Aiuto" button: confirmed on a real Mac that the
-# system Aiuto menu already opens the registered Help Book correctly
-# (via HPDBookAccessPath); a button here would have to invoke Help
-# Viewer from an external `open help:` call instead of the native
-# in-process "Show Help" action, which doesn't reliably land on the
-# same page (confirmed on a real Mac: opened Help Viewer's general
-# view, not this book) — not worth carrying a redundant, less
-# reliable path to the same content.
+# No in-dialog "Aiuto" button: the system Aiuto menu already opens the
+# registered Help Book correctly (via HPDBookAccessPath). A button
+# here would invoke Help Viewer via an external `open help:` call
+# instead of the native "Show Help" action, which doesn't reliably
+# land on the same page (opens Help Viewer's general view instead) —
+# not worth a redundant, less reliable path to the same content.
 #
 # Wizard-style navigation with a real "back" across 2 levels, same
-# structure already validated on Linux (linux-launcher/wrapper.sh):
-# Annulla/Esc at any level returns to the level above, it doesn't exit
-# the app — only level 1 (nothing above it) is a real exit. Confirmed
-# working on a real Mac.
+# structure as Linux (linux-launcher/wrapper.sh): Annulla/Esc at any
+# level returns to the level above instead of exiting — only level 1
+# (nothing above it) is a real exit.
 while :; do  # level 1: File / Cartella
     tipo=$(osascript <<'EOF' 2>/dev/null
 display dialog "Estrarre un file .p7m singolo o tutti i file in una cartella?" buttons {"File", "Cartella"} default button "File" with title "sbusta-p7m"

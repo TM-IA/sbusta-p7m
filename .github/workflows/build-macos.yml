@@ -1,35 +1,25 @@
 name: build-macos
 
-# Builds the macOS .app entirely on a GitHub-hosted runner — started
-# as a feasibility prototype (README claimed this needed an
-# interactive sudo, "not practical on a hosted runner"; confirmed
-# false on a real run) and now confirmed working end-to-end on real
-# hardware: build, packaging, Help Book, and the wrapper's dialog
-# navigation all verified by hand on a real Mac. Callable standalone
-# (workflow_dispatch, for a quick feasibility/regression check) or as
-# a step of release.yml (workflow_call).
+# Builds the macOS .app entirely on a GitHub-hosted runner. Callable
+# standalone (workflow_dispatch, for a quick regression check) or as a
+# step of release.yml (workflow_call).
 #
-# Notes on how it works, kept from the original investigation:
 # - sveinbjornt/setup-platypus installs the Platypus CLI via
 #   `sudo bash InstallCommandLineTool.sh`; works non-interactively
 #   because GitHub-hosted macOS runners have passwordless sudo by
 #   default (runner ALL=(root) NOPASSWD:ALL in /etc/sudoers.d/runner).
-# - actions/setup-python's macOS builds may not be universal2 (an
-#   earlier attempt to add that was merged then reverted), so this
+# - actions/setup-python's macOS builds may not be universal2, so this
 #   downloads the official python.org universal2 installer directly
 #   instead, same requirement build-macos/build.sh documents for a
 #   local build.
 # - PyInstaller's direct --target-arch universal2 needs every wheel
 #   involved to itself be (or resolve to) universal2; if a dependency
-#   only ships thin wheels, that single-shot build can fail even with
-#   a universal2 Python. Fallback: build arm64 first, then x86_64,
-#   each as a thin binary, then merge with `lipo` — slower but doesn't
-#   depend on any wheel being pre-built universal2. Not exercised yet
-#   (the direct universal2 build has succeeded every time so far).
+#   only ships thin wheels, that build can fail even with a universal2
+#   Python. Fallback: build arm64 and x86_64 separately, merge with
+#   `lipo`.
 #
-# Still not done here: this doesn't touch build-macos/build.sh (the
-# documented local-build path) or README — both still describe a
-# local-only build. Left as is until this CI path has more mileage.
+# build-macos/build.sh (the local-build path) and README still
+# describe a local-only build; not updated here.
 on:
   workflow_dispatch:
     inputs:
@@ -53,9 +43,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Platypus command line tool
-        # No tags/releases exist on this repo (verified: only a
-        # `master` branch), so pinned to a commit SHA instead of a
-        # version tag for reproducibility.
+        # No tags/releases exist on this repo (only a `master` branch),
+        # so pinned to a commit SHA instead of a version tag for
+        # reproducibility.
         uses: sveinbjornt/setup-platypus@56e4eea1fc77eaf4b32c379ff2f26a5f3ba52ac5
         with:
           version: '5.5.0'
@@ -79,7 +69,7 @@ jobs:
           file "$PYBIN"
           # Expect two architectures (x86_64 and arm64) in the output.
           file "$PYBIN" | grep -q "2 architectures" || {
-              echo "errore: il Python installato non è universal2" >&2
+              echo "error: installed Python is not universal2" >&2
               exit 1
           }
 
@@ -121,7 +111,7 @@ jobs:
           set -eu
           file build-macos/dist/sbusta-p7m
           file build-macos/dist/sbusta-p7m | grep -q "2 architectures" || {
-              echo "errore: l'eseguibile PyInstaller non è universal2" >&2
+              echo "error: PyInstaller executable is not universal2" >&2
               exit 1
           }
 
@@ -151,13 +141,10 @@ jobs:
               build-macos/dist/sbusta-p7m.app
 
       - name: Register Help Book in Info.plist
-        # Not exposed as a platypus CLI flag, same reasoning as
+        # Not exposed as a platypus CLI flag, same as
         # build-macos/build.sh's own step 4 — a separate
-        # post-processing step. CFBundleHelpBookName matches exactly
-        # what macos-launcher/wrapper.sh's "Aiuto" button calls via
-        # the help: URL scheme (open "help:bookID='...'"), unchanged
-        # from the real production identifier — the wrapper script
-        # itself isn't prototype-specific.
+        # post-processing step. CFBundleHelpBookName is what the
+        # system's native Aiuto menu uses to find this Help Book.
         run: |
           set -eu
           PLIST="build-macos/dist/sbusta-p7m.app/Contents/Info.plist"
@@ -178,15 +165,11 @@ jobs:
       - name: Zip the .app bundle (ditto preserves the .app folder name)
         # actions/upload-artifact uploads a given folder's *contents*,
         # not the folder itself — pointing it straight at
-        # build-macos/dist/sbusta-p7m.app silently drops the
-        # ".app"-named wrapper folder from the downloaded artifact
-        # (verified: the first prototype run's artifact, downloaded
-        # and inspected, had bare Contents/... at its root, no
-        # sbusta-p7m.app/ folder — that's why the reported "malformed"
-        # bundle wasn't actually a plist problem). Zipping the bundle
-        # ourselves with ditto (Apple's own tool for this, preserves
-        # resource forks/xattrs a generic zip can lose) keeps the
-        # folder name intact inside the artifact.
+        # build-macos/dist/sbusta-p7m.app would drop the ".app"-named
+        # wrapper folder from the downloaded artifact. Zipping the
+        # bundle ourselves with ditto (Apple's own tool for this,
+        # preserves resource forks/xattrs a generic zip can lose) keeps
+        # the folder name intact inside the artifact.
         run: |
           set -eu
           ditto -c -k --sequesterRsrc --keepParent \
