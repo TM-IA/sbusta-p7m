@@ -107,37 +107,33 @@ volte.
 ## App macOS
 
 Un `.app` autonomo, avviabile con doppio clic (nessun Python richiesto
-sul sistema di chi lo riceve), viene buildato in locale, non dalla CI:
+sul sistema di chi lo riceve):
 
-```sh
-build-macos/build.sh
-```
-
-Produce `build-macos/dist/sbusta-p7m.app`, un binario universal2
-(arm64 + x86_64) costruito con PyInstaller e incapsulato con
-[Platypus](https://sveinbjorn.org/platypus). Richiede, sulla macchina
-di build: un Python universal2 (quello di Homebrew è specifico per
-architettura, non basta — usare l'
-[installer ufficiale di python.org](https://www.python.org/downloads/macos/)),
-e Platypus stesso (con il suo tool a riga di comando installato).
-L'icona (`macos-launcher/AppIcon.icns`) fa parte di questo repository.
-
-L'app **non è firmata digitalmente**. Per installarla:
-
-1. Copia `sbusta-p7m.app` dove preferisci (es. `/Applications`).
-2. Non essendo firmata, macOS Gatekeeper blocca il primo avvio.
-   Rimuovi il flag di quarantena una volta sola:
+1. Scarica `sbusta-p7m.app.zip` dall'[ultima release](../../releases/latest)
+   ed estrailo.
+2. Non essendo firmata digitalmente, macOS Gatekeeper blocca il primo
+   avvio. Rimuovi il flag di quarantena una volta sola:
    ```sh
    xattr -rd com.apple.quarantine /path/to/sbusta-p7m.app
    ```
 3. Doppio clic per avviarla, o trascina un file `.p7m` sull'icona
    dell'app.
 
-Non esiste una build CI per macOS (il passo di build di Platypus
-richiede un `sudo` interattivo una tantum per installare il suo tool a
-riga di comando, non praticabile su un runner ospitato). Un `.app`
-buildato viene invece allegato a mano a una
-[GitHub Release](../../releases) quando ne viene tagliata una.
+Buildata interamente in CI (workflow `build-macos.yml`: universal2
+arm64+x86_64 con PyInstaller, incapsulato con
+[Platypus](https://sveinbjorn.org/platypus)) e allegata automaticamente
+a ogni release. Per buildarla in locale — es. per modificarla —
+serve un Python universal2 sulla macchina di build (quello di Homebrew
+è specifico per architettura, non basta — usare l'
+[installer ufficiale di python.org](https://www.python.org/downloads/macos/))
+e Platypus stesso (con il suo tool a riga di comando installato):
+
+```sh
+build-macos/build.sh
+```
+
+Produce `build-macos/dist/sbusta-p7m.app`. L'icona
+(`macos-launcher/AppIcon.icns`) fa parte di questo repository.
 
 Il bundle dell'app incorpora un binario costruito da
 [Platypus](https://sveinbjorn.org/platypus) (BSD 3-Clause) — vedi
@@ -150,14 +146,15 @@ di Aiuto.
 ## Linux
 
 Un tarball autonomo (nessun Python richiesto sul sistema di chi lo
-riceve) viene buildato dalla CI sia per `x86_64` che per `aarch64`, a
-ogni push su `main` che tocca `linux-launcher/`, `build-linux/`, o il
-workflow stesso:
+riceve), per `x86_64` e `aarch64`:
 
-1. Scarica l'artifact `sbusta-p7m-linux-x86_64` o
-   `sbusta-p7m-linux-aarch64` dall'ultima esecuzione riuscita sotto
-   [Actions](../../actions/workflows/build-linux.yml) (corrispondente
-   all'architettura della tua macchina).
+1. Scarica `sbusta-p7m-linux-x86_64.tar.gz` o
+   `sbusta-p7m-linux-aarch64.tar.gz` (corrispondente all'architettura
+   della tua macchina) dall'[ultima release](../../releases/latest).
+   In alternativa, per una build dall'ultimo commit su `main` non
+   ancora taggata, scarica l'artifact equivalente da
+   [Actions](../../actions/workflows/build-linux.yml) — richiede di
+   essere loggato su GitHub, anche su un repository pubblico.
 2. Estrailo: `tar xzf sbusta-p7m-linux-<arch>.tar.gz`.
 3. Installa per utente, senza bisogno di root:
    ```sh
@@ -190,13 +187,14 @@ sistema, stesso vincolo di macOS) si registra per aprire direttamente
 gli allegati `.p7m` dalle app di posta, e compare anche come app
 normale con una propria icona nel launcher:
 
-1. Scarica l'artifact `sbusta-p7m-android-debug` dall'ultima
-   esecuzione riuscita sotto
-   [Actions](../../actions/workflows/build-android.yml).
-2. Estrai l'`.apk` dallo zip scaricato.
-3. Abilita "Installa da origini sconosciute" per il file (non è
-   firmato per una distribuzione release/store), poi installalo.
-4. Tocca un allegato `.p7m` in un'app di posta per aprirlo
+1. Scarica `sbusta-p7m.apk` dall'[ultima release](../../releases/latest).
+   In alternativa, per una build dall'ultimo commit su `main` non
+   ancora taggata, scarica l'artifact equivalente da
+   [Actions](../../actions/workflows/build-android.yml) — richiede
+   login GitHub.
+2. Abilita "Installa da origini sconosciute" per il file (non è
+   installata dal Play Store/F-Droid), poi installalo.
+3. Tocca un allegato `.p7m` in un'app di posta per aprirlo
    direttamente, oppure lancia l'app dal cassetto applicazioni e
    scegli un file tramite "Apri file .p7m…".
 
@@ -209,10 +207,12 @@ d'uso.
 
 Usa [BouncyCastle](https://www.bouncycastle.org/) (`bcpkix-jdk18on`)
 per il parsing CMS, stessa logica del core Python, portata campo per
-campo. La CI builda l'APK ed esegue test unitari contro una busta
-firmata sinteticamente (`android-app/`); aprire un `.p7m` reale da
-un'app di posta reale su un dispositivo fisico non è stato ancora
-testato. Nessuna firma di release, nessuna distribuzione Play
+campo. La CI builda l'APK, lo firma con una chiave di firma dedicata
+(così un aggiornamento installa correttamente sopra una versione
+precedente, invece di scontrarsi con una firma di debug diversa a ogni
+build) ed esegue test unitari contro una busta firmata sinteticamente
+(`android-app/`); testato anche aprendo un `.p7m` reale da un'app di
+posta reale su un dispositivo fisico. Nessuna distribuzione Play
 Store/F-Droid in questa fase.
 
 ## Limiti noti
@@ -325,35 +325,32 @@ up to three times.
 ## macOS app
 
 A self-contained, double-clickable `.app` (no Python required on the
-recipient's system) is built locally, not by CI:
+recipient's system):
 
-```sh
-build-macos/build.sh
-```
-
-Produces `build-macos/dist/sbusta-p7m.app`, a universal2 binary
-(arm64 + x86_64) built with PyInstaller and wrapped with
-[Platypus](https://sveinbjorn.org/platypus). Requires, on the build
-machine: a universal2 Python (Homebrew's own Python is arch-specific,
-not enough — use the official
-[python.org installer](https://www.python.org/downloads/macos/)), and
-Platypus itself (with its command-line tool installed). The icon
-(`macos-launcher/AppIcon.icns`) is part of this repository.
-
-The app is **not code-signed**. To install it:
-
-1. Copy `sbusta-p7m.app` wherever you like (e.g. `/Applications`).
-2. Since it isn't signed, macOS Gatekeeper blocks the first launch.
-   Clear the quarantine flag once:
+1. Download `sbusta-p7m.app.zip` from the
+   [latest release](../../releases/latest) and extract it.
+2. Since it isn't code-signed, macOS Gatekeeper blocks the first
+   launch. Clear the quarantine flag once:
    ```sh
    xattr -rd com.apple.quarantine /path/to/sbusta-p7m.app
    ```
 3. Double-click to run, or drag a `.p7m` file onto the app icon.
 
-There's no CI build for macOS (Platypus's build step needs a one-time
-interactive `sudo` to install its command-line tool, not practical on
-a hosted runner). A built `.app` is instead attached manually to a
-[GitHub Release](../../releases) when one is cut.
+Built entirely in CI (the `build-macos.yml` workflow: universal2
+arm64+x86_64 with PyInstaller, wrapped with
+[Platypus](https://sveinbjorn.org/platypus)) and attached to every
+release automatically. To build it locally instead — e.g. to modify
+it — the build machine needs a universal2 Python (Homebrew's own
+Python is arch-specific, not enough — use the official
+[python.org installer](https://www.python.org/downloads/macos/)) and
+Platypus itself (with its command-line tool installed):
+
+```sh
+build-macos/build.sh
+```
+
+Produces `build-macos/dist/sbusta-p7m.app`. The icon
+(`macos-launcher/AppIcon.icns`) is part of this repository.
 
 The app bundle embeds a binary built by
 [Platypus](https://sveinbjorn.org/platypus) (BSD 3-Clause) — see
@@ -365,14 +362,15 @@ See `macos-launcher/` for the wrapper script and Help content sources.
 ## Linux
 
 A self-contained tarball (no Python required on the recipient's
-system) is built by CI for both `x86_64` and `aarch64`, one per push
-to `main` that touches `linux-launcher/`, `build-linux/`, or the
-workflow itself:
+system), for both `x86_64` and `aarch64`:
 
-1. Download the `sbusta-p7m-linux-x86_64` or `sbusta-p7m-linux-aarch64`
-   artifact from the latest successful run under
-   [Actions](../../actions/workflows/build-linux.yml) (matching your
-   machine's architecture).
+1. Download `sbusta-p7m-linux-x86_64.tar.gz` or
+   `sbusta-p7m-linux-aarch64.tar.gz` (matching your machine's
+   architecture) from the [latest release](../../releases/latest).
+   Alternatively, for a build from the latest commit on `main` not
+   yet tagged, download the equivalent artifact from
+   [Actions](../../actions/workflows/build-linux.yml) instead —
+   requires being logged into GitHub, even on a public repository.
 2. Extract it: `tar xzf sbusta-p7m-linux-<arch>.tar.gz`.
 3. Install per-user, no root required:
    ```sh
@@ -402,13 +400,15 @@ can't run a Python script inside a system extension, same constraint
 as macOS) registers to open `.p7m` attachments directly from mail apps,
 and also appears as a regular app with its own launcher icon:
 
-1. Download the `sbusta-p7m-android-debug` artifact from the latest
-   successful run under
-   [Actions](../../actions/workflows/build-android.yml).
-2. Extract the `.apk` from the downloaded zip.
-3. Enable "Install from unknown sources" for the file (it isn't
-   signed for a release/store distribution), then install it.
-4. Tap a `.p7m` attachment in a mail app to open it directly, or launch
+1. Download `sbusta-p7m.apk` from the
+   [latest release](../../releases/latest). Alternatively, for a
+   build from the latest commit on `main` not yet tagged, download
+   the equivalent artifact from
+   [Actions](../../actions/workflows/build-android.yml) instead —
+   requires being logged into GitHub.
+2. Enable "Install from unknown sources" for the file (it isn't
+   installed from the Play Store/F-Droid), then install it.
+3. Tap a `.p7m` attachment in a mail app to open it directly, or launch
    the app from the app drawer and pick a file via "Apri file .p7m…".
 
 On opening, it shows a summary of the signer(s) — one entry per
@@ -419,10 +419,12 @@ in-app "Aiuto" button shows brief usage instructions.
 
 Uses [BouncyCastle](https://www.bouncycastle.org/) (`bcpkix-jdk18on`)
 for CMS parsing, same logic as the Python core, ported field for
-field. CI builds the APK and runs unit tests against a synthetically
-signed envelope (`android-app/`); opening a real `.p7m` from an actual
-mail app on a physical device has not been tested yet. No release
-signing, no Play Store/F-Droid distribution in this phase.
+field. CI builds the APK, signs it with a dedicated signing key (so an
+update installs correctly over a previous version, instead of
+colliding with a different debug signature on every build), and runs
+unit tests against a synthetically signed envelope (`android-app/`);
+also tested opening a real `.p7m` from an actual mail app on a
+physical device. No Play Store/F-Droid distribution in this phase.
 
 ## Known limitations
 
