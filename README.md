@@ -151,10 +151,6 @@ riceve), per `x86_64` e `aarch64`:
 1. Scarica `sbusta-p7m-linux-x86_64.tar.gz` o
    `sbusta-p7m-linux-aarch64.tar.gz` (corrispondente all'architettura
    della tua macchina) dall'[ultima release](../../releases/latest).
-   In alternativa, per una build dall'ultimo commit su `main` non
-   ancora taggata, scarica l'artifact equivalente da
-   [Actions](../../actions/workflows/build-linux.yml) — richiede di
-   essere loggato su GitHub, anche su un repository pubblico.
 2. Estrailo: `tar xzf sbusta-p7m-linux-<arch>.tar.gz`.
 3. Installa per utente, senza bisogno di root:
    ```sh
@@ -188,10 +184,6 @@ gli allegati `.p7m` dalle app di posta, e compare anche come app
 normale con una propria icona nel launcher:
 
 1. Scarica `sbusta-p7m.apk` dall'[ultima release](../../releases/latest).
-   In alternativa, per una build dall'ultimo commit su `main` non
-   ancora taggata, scarica l'artifact equivalente da
-   [Actions](../../actions/workflows/build-android.yml) — richiede
-   login GitHub.
 2. Abilita "Installa da origini sconosciute" per il file (non è
    installata dal Play Store/F-Droid), poi installalo.
 3. Tocca un allegato `.p7m` in un'app di posta per aprirlo
@@ -367,10 +359,6 @@ system), for both `x86_64` and `aarch64`:
 1. Download `sbusta-p7m-linux-x86_64.tar.gz` or
    `sbusta-p7m-linux-aarch64.tar.gz` (matching your machine's
    architecture) from the [latest release](../../releases/latest).
-   Alternatively, for a build from the latest commit on `main` not
-   yet tagged, download the equivalent artifact from
-   [Actions](../../actions/workflows/build-linux.yml) instead —
-   requires being logged into GitHub, even on a public repository.
 2. Extract it: `tar xzf sbusta-p7m-linux-<arch>.tar.gz`.
 3. Install per-user, no root required:
    ```sh
@@ -401,11 +389,7 @@ as macOS) registers to open `.p7m` attachments directly from mail apps,
 and also appears as a regular app with its own launcher icon:
 
 1. Download `sbusta-p7m.apk` from the
-   [latest release](../../releases/latest). Alternatively, for a
-   build from the latest commit on `main` not yet tagged, download
-   the equivalent artifact from
-   [Actions](../../actions/workflows/build-android.yml) instead —
-   requires being logged into GitHub.
+   [latest release](../../releases/latest).
 2. Enable "Install from unknown sources" for the file (it isn't
    installed from the Play Store/F-Droid), then install it.
 3. Tap a `.p7m` attachment in a mail app to open it directly, or launch
