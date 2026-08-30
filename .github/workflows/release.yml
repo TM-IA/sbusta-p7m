@@ -14,11 +14,8 @@ name: release
 #
 # Known gap: only the macOS build's version string (-V) is driven by
 # this workflow's computed version. Android's versionName/versionCode
-# (android-app/app/build.gradle.kts) and the Python core's version
-# (pyproject.toml) are each their own hardcoded value, not synchronized
-# to the release tag — pre-existing drift (Android was already at
-# 0.2.0 while pyproject.toml was at 0.1.0 before this workflow existed),
-# not something this workflow fixes.
+# and pyproject.toml's version are each independent, pre-existing
+# values not synchronized to the release tag.
 on:
   push:
     tags:
@@ -39,16 +36,36 @@ jobs:
     outputs:
       version: ${{ steps.compute.outputs.version }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history, needed for an accurate commit count
+
       - name: Compute version string
         id: compute
         run: |
           set -eu
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            v="${{ inputs.version }}"
+            # Test/draft run: never a "real" version, so always suffix
+            # with the commit count — repeated test dispatches get a
+            # unique version without colliding with each other or with
+            # a real release, no manual bookkeeping needed.
+            count=$(git rev-list --count HEAD)
+            v="${{ inputs.version }}+${count}"
           else
             v="${GITHUB_REF_NAME#v}"
           fi
           echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Fail if this version was already released
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          if gh release view "v${{ steps.compute.outputs.version }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "error: release v${{ steps.compute.outputs.version }} already exists" >&2
+            exit 1
+          fi
 
   build-linux:
     needs: version
