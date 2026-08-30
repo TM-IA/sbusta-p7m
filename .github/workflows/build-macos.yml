@@ -27,12 +27,11 @@ name: build-macos
 #   each as a thin binary, then merge with `lipo` — slower but doesn't
 #   depend on any wheel being pre-built universal2.
 #
-# Deliberately NOT wired to push triggers, and NOT using the project's
-# real build-macos/build.sh as-is (no Help Book bundling/registration
-# here) — this workflow only answers the feasibility question above.
-# Folding a working version of this into the real pipeline (Help Book,
-# README) is a separate follow-up decision once this is confirmed to
-# work at all.
+# Deliberately NOT wired to push triggers — this workflow only answers
+# the feasibility question above. Folding a working version of this
+# into the real pipeline (replacing/joining the local-only
+# build-macos/build.sh, README updates) is a separate follow-up
+# decision once this is confirmed to work at all.
 on:
   workflow_dispatch:
 
@@ -115,7 +114,13 @@ jobs:
               exit 1
           }
 
-      - name: Wrap with Platypus (no Help Book — feasibility only)
+      - name: Rebuild Help Book search index
+        run: |
+          set -eu
+          cd "macos-launcher/sbusta-p7m Help.help/Contents/Resources/it.lproj"
+          hiutil -Cf "sbusta-p7m Help.helpindex" .
+
+      - name: Wrap with Platypus
         run: |
           set -eu
           platypus \
@@ -125,6 +130,7 @@ jobs:
               -D \
               -X "p7m" \
               -f build-macos/dist/sbusta-p7m \
+              -f "macos-launcher/sbusta-p7m Help.help" \
               -i "macos-launcher/AppIcon.icns" \
               -u "TM-IA" \
               -V "0.0.0-ci-prototype" \
@@ -133,13 +139,30 @@ jobs:
               macos-launcher/wrapper.sh \
               build-macos/dist/sbusta-p7m.app
 
+      - name: Register Help Book in Info.plist
+        # Not exposed as a platypus CLI flag, same reasoning as
+        # build-macos/build.sh's own step 4 — a separate
+        # post-processing step. CFBundleHelpBookName matches exactly
+        # what macos-launcher/wrapper.sh's "Aiuto" button calls via
+        # the help: URL scheme (open "help:bookID='...'"), unchanged
+        # from the real production identifier — the wrapper script
+        # itself isn't prototype-specific.
+        run: |
+          set -eu
+          PLIST="build-macos/dist/sbusta-p7m.app/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Delete :CFBundleHelpBookFolder" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Delete :CFBundleHelpBookName" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleHelpBookFolder string 'sbusta-p7m Help.help'" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleHelpBookName string 'com.tm-ia.sbusta-p7m.help'" "$PLIST"
+
       - name: Verify the .app bundle
         run: |
           set -eu
           test -d build-macos/dist/sbusta-p7m.app
           test -x "build-macos/dist/sbusta-p7m.app/Contents/Resources/sbusta-p7m"
+          test -d "build-macos/dist/sbusta-p7m.app/Contents/Resources/sbusta-p7m Help.help"
           file "build-macos/dist/sbusta-p7m.app/Contents/Resources/sbusta-p7m"
-          echo "prototipo riuscito: .app costruito interamente in CI"
+          echo "prototipo riuscito: .app costruito interamente in CI, Help Book incluso"
 
       - name: Zip the .app bundle (ditto preserves the .app folder name)
         # actions/upload-artifact uploads a given folder's *contents*,
