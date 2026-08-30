@@ -2,6 +2,228 @@
 
 Documentazione in inglese più sotto in questo stesso file.
 
+Estrae il PDF contenuto in una busta `.p7m` (CMS/PKCS#7, il formato
+usato dalla firma digitale italiana), insieme ai metadati del
+certificato del firmatario, salvati in un file `.json` a lato.
+
+## Stato
+
+La logica di estrazione principale e la CLI sono complete e testate.
+Esiste un launcher/app nativo per ciascuna piattaforma di destinazione
+— macOS, Linux, Android — ciascuno a un diverso stadio di verifica nel
+mondo reale (vedi le sezioni per piattaforma più sotto). Nessuna
+validazione crittografica della firma, della catena di certificazione
+o dello stato di revoca: solo estrazione strutturale, non previsto
+cambiare.
+
+Non ancora fatto: integrazioni più profonde con file manager/anteprime
+(uno script di anteprima per Yazi, un thumbnailer per Nemo, un pannello
+di anteprima Quick Look per macOS) — oggi, aprire un `.p7m` lancia
+l'app/wrapper della piattaforma descritto più sotto, non mostra
+un'anteprima inline senza lanciare nulla. L'interfaccia e il
+pacchettizzamento potrebbero ancora cambiare.
+
+## Requisiti
+
+- Python 3.9+
+- [pipx](https://pipx.pypa.io/) (consigliato per un comando
+  `sbusta-py-p7m` autonomo), oppure semplice `pip`/`venv`
+
+## Installazione
+
+```sh
+git clone <repo-url>
+cd sbusta-p7m
+pipx install .
+```
+
+Installa un comando `sbusta-py-p7m` autonomo, indipendente da
+qualunque virtual environment di progetto. Per recepire modifiche
+locali al sorgente, reinstalla con `pipx install . --force`.
+
+In alternativa, senza pipx:
+
+```sh
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python3 -m sbusta_p7m.cli <args>
+```
+
+## Utilizzo
+
+```sh
+sbusta-py-p7m <file.p7m>
+sbusta-py-p7m <cartella> [-r] [-d <destinazione>]
+```
+
+- `percorso` (posizionale): un singolo file `.p7m`, o una cartella. Se
+  è una cartella, ogni file `.p7m` al suo interno viene elaborato
+  (corrispondenza dell'estensione non case-sensitive).
+- `-d`, `--destinazione <cartella>`: cartella di destinazione per i
+  file `.pdf`/`.json` estratti. Di default, la stessa cartella del
+  file sorgente. Creata automaticamente se non esiste.
+- `-r`, `--ricorsivo`: se `percorso` è una cartella, cerca i file
+  `.p7m` ricorsivamente nelle sottocartelle.
+
+Un file malformato dentro un batch viene segnalato e saltato, non
+interrompe il resto del batch. I file di output esistenti non vengono
+mai sovrascritti. Il codice di uscita è `0` se tutti i file sono
+riusciti, `1` altrimenti.
+
+## Output
+
+Per ogni `nome.p7m` (o `nome.pdf.p7m`), viene creata una sottocartella
+`nome/` dentro la destinazione, contenente:
+
+- `nome.pdf` — il PDF estratto, non modificato
+- `nome.json` — metadati del firmatario, es.:
+
+```json
+{
+  "file_originale": "name.pdf.p7m",
+  "pdf_estratto": "name.pdf",
+  "firmatari": [
+    {
+      "cn": "...",
+      "organizzazione": "...",
+      "numero_seriale": "...",
+      "validita_inizio": "...",
+      "validita_fine": "...",
+      "algoritmo_firma": "...",
+      "signing_time": "..."
+    }
+  ]
+}
+```
+
+`firmatari` contiene una voce per ogni livello di firma attraversato.
+La maggior parte dei file `.p7m` ha un solo livello (array di
+lunghezza 1); i file firmati più di una volta (`nome.pdf.p7m.p7m`,
+buste CMS annidate) producono una voce per livello, firma più esterna
+per prima. Ogni campo che non è stato possibile risolvere è `null`,
+mai omesso. Verificato su documenti italiani reali firmati fino a tre
+volte.
+
+## App macOS
+
+Un `.app` autonomo, avviabile con doppio clic (nessun Python richiesto
+sul sistema di chi lo riceve), viene buildato in locale, non dalla CI:
+
+```sh
+build-macos/build.sh
+```
+
+Produce `build-macos/dist/sbusta-p7m.app`, un binario universal2
+(arm64 + x86_64) costruito con PyInstaller e incapsulato con
+[Platypus](https://sveinbjorn.org/platypus). Richiede, sulla macchina
+di build: un Python universal2 (quello di Homebrew è specifico per
+architettura, non basta — usare l'
+[installer ufficiale di python.org](https://www.python.org/downloads/macos/)),
+e Platypus stesso (con il suo tool a riga di comando installato).
+L'icona (`macos-launcher/AppIcon.icns`) fa parte di questo repository.
+
+L'app **non è firmata digitalmente**. Per installarla:
+
+1. Copia `sbusta-p7m.app` dove preferisci (es. `/Applications`).
+2. Non essendo firmata, macOS Gatekeeper blocca il primo avvio.
+   Rimuovi il flag di quarantena una volta sola:
+   ```sh
+   xattr -rd com.apple.quarantine /path/to/sbusta-p7m.app
+   ```
+3. Doppio clic per avviarla, o trascina un file `.p7m` sull'icona
+   dell'app.
+
+Non esiste una build CI per macOS (il passo di build di Platypus
+richiede un `sudo` interattivo una tantum per installare il suo tool a
+riga di comando, non praticabile su un runner ospitato). Un `.app`
+buildato viene invece allegato a mano a una
+[GitHub Release](../../releases) quando ne viene tagliata una.
+
+Il bundle dell'app incorpora un binario costruito da
+[Platypus](https://sveinbjorn.org/platypus) (BSD 3-Clause) — vedi
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) per il testo della
+licenza, riprodotto come richiesto da quella licenza.
+
+Vedi `macos-launcher/` per lo script wrapper e le fonti del contenuto
+di Aiuto.
+
+## Linux
+
+Un tarball autonomo (nessun Python richiesto sul sistema di chi lo
+riceve) viene buildato dalla CI sia per `x86_64` che per `aarch64`, a
+ogni push su `main` che tocca `linux-launcher/`, `build-linux/`, o il
+workflow stesso:
+
+1. Scarica l'artifact `sbusta-p7m-linux-x86_64` o
+   `sbusta-p7m-linux-aarch64` dall'ultima esecuzione riuscita sotto
+   [Actions](../../actions/workflows/build-linux.yml) (corrispondente
+   all'architettura della tua macchina).
+2. Estrailo: `tar xzf sbusta-p7m-linux-<arch>.tar.gz`.
+3. Installa per utente, senza bisogno di root:
+   ```sh
+   cd sbusta-p7m-linux-<arch>
+   ./install.sh
+   ```
+   Copia il wrapper grafico, l'aiuto e l'icona in
+   `~/.local/share/sbusta-p7m/`, l'eseguibile autonomo `sbusta-p7m` in
+   `~/.local/bin/sbusta-p7m` (utilizzabile anche direttamente da
+   terminale, stessa interfaccia CLI di `sbusta-py-p7m` sopra ma senza
+   dipendenza da Python), e registra una voce di menu `.desktop`
+   (associata anche ai file `.p7m`, così compare in "Apri con" del
+   file manager).
+4. Per rimuoverlo in seguito: `~/.local/share/sbusta-p7m/uninstall.sh`.
+
+I dialoghi usano `zenity`; se non è già installato, installalo prima
+tramite il gestore pacchetti della tua distribuzione (es.
+`apt install zenity`, `dnf install zenity`).
+
+Per buildare il tarball in locale invece di scaricare un artifact CI,
+esegui `build-linux/build.sh` su una macchina Linux della stessa
+architettura (nessuna cross-compilazione). Vedi `linux-launcher/` per
+il sorgente dello script wrapper.
+
+## Android
+
+Un'app Kotlin nativa (non un porting che riusa il core Python —
+Android non può eseguire uno script Python dentro un'estensione di
+sistema, stesso vincolo di macOS) si registra per aprire direttamente
+gli allegati `.p7m` dalle app di posta, e compare anche come app
+normale con una propria icona nel launcher:
+
+1. Scarica l'artifact `sbusta-p7m-android-debug` dall'ultima
+   esecuzione riuscita sotto
+   [Actions](../../actions/workflows/build-android.yml).
+2. Estrai l'`.apk` dallo zip scaricato.
+3. Abilita "Installa da origini sconosciute" per il file (non è
+   firmato per una distribuzione release/store), poi installalo.
+4. Tocca un allegato `.p7m` in un'app di posta per aprirlo
+   direttamente, oppure lancia l'app dal cassetto applicazioni e
+   scegli un file tramite "Apri file .p7m…".
+
+All'apertura, mostra un riepilogo del/i firmatario/i — una voce per
+livello di firma, per i documenti firmati più volte — con pulsanti per
+aprire il PDF estratto, salvarlo in una cartella scelta, ed
+eventualmente esportare i metadati come JSON, entrambi tramite il file
+picker di sistema. Un pulsante "Aiuto" in-app mostra brevi istruzioni
+d'uso.
+
+Usa [BouncyCastle](https://www.bouncycastle.org/) (`bcpkix-jdk18on`)
+per il parsing CMS, stessa logica del core Python, portata campo per
+campo. La CI builda l'APK ed esegue test unitari contro una busta
+firmata sinteticamente (`android-app/`); aprire un `.p7m` reale da
+un'app di posta reale su un dispositivo fisico non è stato ancora
+testato. Nessuna firma di release, nessuna distribuzione Play
+Store/F-Droid in questa fase.
+
+## Limiti noti
+
+- Nessuna validazione crittografica della firma, della catena di
+  certificazione o dello stato di revoca: solo estrazione strutturale.
+- Viene letto solo il primo firmatario di ogni livello di busta (buste
+  co-firmate con più firmatari allo stesso livello non sono gestite).
+
+---
+
 Extract the PDF embedded in a `.p7m` envelope (CMS/PKCS#7, the format
 used by Italian digital signatures), together with the signer's
 certificate metadata, saved as a `.json` file next to the PDF.
