@@ -141,7 +141,25 @@ jobs:
           file "build-macos/dist/sbusta-p7m.app/Contents/Resources/sbusta-p7m"
           echo "prototipo riuscito: .app costruito interamente in CI"
 
+      - name: Zip the .app bundle (ditto preserves the .app folder name)
+        # actions/upload-artifact uploads a given folder's *contents*,
+        # not the folder itself — pointing it straight at
+        # build-macos/dist/sbusta-p7m.app silently drops the
+        # ".app"-named wrapper folder from the downloaded artifact
+        # (verified: the first prototype run's artifact, downloaded
+        # and inspected, had bare Contents/... at its root, no
+        # sbusta-p7m.app/ folder — that's why the reported "malformed"
+        # bundle wasn't actually a plist problem). Zipping the bundle
+        # ourselves with ditto (Apple's own tool for this, preserves
+        # resource forks/xattrs a generic zip can lose) keeps the
+        # folder name intact inside the artifact.
+        run: |
+          set -eu
+          ditto -c -k --sequesterRsrc --keepParent \
+              build-macos/dist/sbusta-p7m.app \
+              build-macos/dist/sbusta-p7m.app.zip
+
       - uses: actions/upload-artifact@v4
         with:
           name: sbusta-p7m-macos-ci-prototype
-          path: build-macos/dist/sbusta-p7m.app
+          path: build-macos/dist/sbusta-p7m.app.zip
