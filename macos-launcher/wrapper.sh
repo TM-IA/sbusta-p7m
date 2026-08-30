@@ -84,35 +84,26 @@ $out
     exit "$esito_totale"
 fi
 
-# HELP_HTML kept absolute-from-Resources (script's own working
-# directory, documented Platypus behavior) so both this dialog button
-# and, in principle, other tools can reference the exact same file —
-# single source of truth with the registered Help Book's own page.
-HELP_HTML="./sbusta-p7m Help.help/Contents/Resources/it.lproj/index.html"
-
-# Wizard-style navigation with a real "back" across 3 levels, same
+# No in-dialog "Aiuto" button: confirmed on a real Mac that the
+# system Aiuto menu already opens the registered Help Book correctly
+# (via HPDBookAccessPath); a button here would have to invoke Help
+# Viewer from an external `open help:` call instead of the native
+# in-process "Show Help" action, which doesn't reliably land on the
+# same page (confirmed on a real Mac: opened Help Viewer's general
+# view, not this book) — not worth carrying a redundant, less
+# reliable path to the same content.
+#
+# Wizard-style navigation with a real "back" across 2 levels, same
 # structure already validated on Linux (linux-launcher/wrapper.sh):
 # Annulla/Esc at any level returns to the level above, it doesn't exit
-# the app — only level 1 (nothing above it) is a real exit. Not tested
-# on a real Mac in this session (no macOS toolchain available here):
-# to be verified on the next local build.
-while :; do  # level 1: File / Cartella / Aiuto
+# the app — only level 1 (nothing above it) is a real exit. Confirmed
+# working on a real Mac.
+while :; do  # level 1: File / Cartella
     tipo=$(osascript <<'EOF' 2>/dev/null
-display dialog "Estrarre un file .p7m singolo o tutti i file in una cartella?" buttons {"File", "Cartella", "Aiuto"} default button "File" with title "sbusta-p7m"
+display dialog "Estrarre un file .p7m singolo o tutti i file in una cartella?" buttons {"File", "Cartella"} default button "File" with title "sbusta-p7m"
 button returned of result
 EOF
     ) || exit 0
-
-    if [ "$tipo" = "Aiuto" ]; then
-        # Same channel as the system Aiuto menu (the "help:" URL
-        # scheme, Help Viewer, not the browser): not verified on a real
-        # Mac in this session, falls back to "open $HELP_HTML" if it
-        # fails.
-        if ! open "help:bookID='com.tm-ia.sbusta-p7m.help'" 2>/dev/null; then
-            open "$HELP_HTML"
-        fi
-        continue
-    fi
 
     while :; do  # level 2: source file/folder selection
         if [ "$tipo" = "File" ]; then
