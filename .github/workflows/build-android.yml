@@ -48,7 +48,15 @@ jobs:
       - name: Show merged manifest
         run: find app/build/intermediates -iname "AndroidManifest.xml" -exec sh -c 'echo "--- {} ---"; cat "{}"' \;
 
+      - name: Rename release APK
+        # AGP's default output name (app-release.apk) leaks the Gradle
+        # module name, not the product name — renamed here (shell-level,
+        # not via AGP's variant-output API) rather than relying on an
+        # AGP-internal API that could shift between versions and isn't
+        # verifiable without a local Gradle/Android SDK.
+        run: mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/sbusta-p7m.apk
+
       - uses: actions/upload-artifact@v4
         with:
           name: sbusta-p7m-android-release
-          path: android-app/app/build/outputs/apk/release/*.apk
+          path: android-app/app/build/outputs/apk/release/sbusta-p7m.apk
