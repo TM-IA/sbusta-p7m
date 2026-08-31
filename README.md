@@ -114,7 +114,7 @@ sul sistema di chi lo riceve):
 2. Non essendo firmata digitalmente, macOS Gatekeeper blocca il primo
    avvio. Rimuovi il flag di quarantena una volta sola:
    ```sh
-   xattr -rd com.apple.quarantine /path/to/sbusta-p7m.app
+   xattr -d com.apple.quarantine /path/to/sbusta-p7m.app
    ```
 3. Doppio clic per avviarla, o trascina un file `.p7m` sull'icona
    dell'app.
@@ -324,7 +324,7 @@ recipient's system):
 2. Since it isn't code-signed, macOS Gatekeeper blocks the first
    launch. Clear the quarantine flag once:
    ```sh
-   xattr -rd com.apple.quarantine /path/to/sbusta-p7m.app
+   xattr -d com.apple.quarantine /path/to/sbusta-p7m.app
    ```
 3. Double-click to run, or drag a `.p7m` file onto the app icon.
 
