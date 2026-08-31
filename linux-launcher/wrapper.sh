@@ -41,7 +41,30 @@ scrivi_log_e_mostra() {
         fi
     fi
 
-    if [ "$esito_totale" -eq 0 ]; then
+    # When at least one file was saved to the fallback folder (see
+    # sbusta_p7m/cli.py's "fallback: <cartella>" line), offer a button
+    # to open it directly instead of leaving the user to find it.
+    # --info/--error only support a single OK button, so switch to
+    # --question (ok-label/cancel-label repurposed, no real "cancel"
+    # meaning here — same technique used elsewhere in this file for
+    # two-way choices).
+    cartella_fallback=$(printf '%s\n' "$testo_completo" | grep '^fallback:' | tail -1 | sed 's/^fallback: //')
+
+    if [ -n "$cartella_fallback" ]; then
+        if [ "$esito_totale" -eq 0 ]; then
+            titolo="sbusta-p7m"
+            icona=""
+        else
+            titolo="sbusta-p7m — completato con errori"
+            icona="--icon-name=dialog-error"
+        fi
+        zenity --question --title="$titolo" $icona \
+            --text="$riepilogo
+Dettagli: $log_path" \
+            --ok-label="Apri cartella" --cancel-label="OK" 2>/dev/null
+        ret=$?
+        [ "$ret" -eq 0 ] && xdg-open "$cartella_fallback" >/dev/null 2>&1 &
+    elif [ "$esito_totale" -eq 0 ]; then
         zenity --info --title="sbusta-p7m" \
             --text="$riepilogo
 Dettagli: $log_path" 2>/dev/null

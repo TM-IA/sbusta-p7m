@@ -43,15 +43,31 @@ scrivi_log_e_mostra() {
     export P7M_OUTPUT="$riepilogo
 Dettagli: $log_path"
 
+    # When at least one file was saved to the fallback folder (see
+    # sbusta_p7m/cli.py's "fallback: <cartella>" line), offer a button
+    # to open it directly instead of leaving the user to find it.
+    cartella_fallback=$(printf '%s\n' "$testo_completo" | grep '^fallback:' | tail -1 | sed 's/^fallback: //')
+
     if [ "$esito_totale" -eq 0 ]; then
-        osascript <<'EOF'
-set msg to system attribute "P7M_OUTPUT"
-display dialog msg with title "sbusta-p7m" buttons {"OK"} default button 1
-EOF
+        titolo="sbusta-p7m"
+        icona=""
     else
-        osascript <<'EOF'
+        titolo="sbusta-p7m — completato con errori"
+        icona=" with icon caution"
+    fi
+
+    if [ -n "$cartella_fallback" ]; then
+        risultato=$(osascript <<EOF
 set msg to system attribute "P7M_OUTPUT"
-display dialog msg with title "sbusta-p7m — completato con errori" buttons {"OK"} default button 1 with icon caution
+display dialog msg with title "$titolo" buttons {"Apri cartella", "OK"} default button "OK"$icona
+button returned of result
+EOF
+        )
+        [ "$risultato" = "Apri cartella" ] && open "$cartella_fallback"
+    else
+        osascript <<EOF
+set msg to system attribute "P7M_OUTPUT"
+display dialog msg with title "$titolo" buttons {"OK"} default button "OK"$icona
 EOF
     fi
 }
