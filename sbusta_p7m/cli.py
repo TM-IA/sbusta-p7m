@@ -11,6 +11,7 @@ import json
 import os
 import sys
 
+from . import preferenze
 from .core import estrai, P7mFormatError, P7mContentError
 
 
@@ -95,17 +96,43 @@ def _elabora_file(percorso_p7m, cartella_destinazione):
         )
         return False
 
-    os.makedirs(cartella_file, exist_ok=True)
-
     metadata["pdf_estratto"] = pdf_filename
+    cartella_radice = cartella_destinazione
 
-    with open(pdf_path, "wb") as f:
-        f.write(pdf_bytes)
-    with open(json_path, "w", encoding="utf-8") as f:
-        json.dump(metadata, f, ensure_ascii=False, indent=2)
-        f.write("\n")
+    try:
+        os.makedirs(cartella_file, exist_ok=True)
+        with open(pdf_path, "wb") as f:
+            f.write(pdf_bytes)
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+    except PermissionError as e:
+        cartella_fallback = preferenze.cartella_fallback()
+        cartella_file = os.path.join(cartella_fallback, folder_name)
+        pdf_path = os.path.join(cartella_file, pdf_filename)
+        json_path = os.path.join(cartella_file, json_filename)
+        try:
+            os.makedirs(cartella_file, exist_ok=True)
+            with open(pdf_path, "wb") as f:
+                f.write(pdf_bytes)
+            with open(json_path, "w", encoding="utf-8") as f:
+                json.dump(metadata, f, ensure_ascii=False, indent=2)
+                f.write("\n")
+        except OSError as e2:
+            print(
+                f"errore: {nome}: permessi negati sulla cartella di destinazione ({e}); "
+                f"anche il fallback è fallito ({e2})",
+                file=sys.stderr,
+            )
+            return False
+        cartella_radice = cartella_fallback
+        print(f"fallback: {cartella_fallback}")
+    except OSError as e:
+        print(f"errore: {nome}: impossibile scrivere il file di destinazione ({e})", file=sys.stderr)
+        return False
 
-    print(f"ok: {nome} -> {folder_name}/{pdf_filename}, {folder_name}/{json_filename}")
+    print(f"ok: {nome} -> {os.path.relpath(pdf_path, cartella_radice)}, "
+          f"{os.path.relpath(json_path, cartella_radice)}")
     return True
 
 
