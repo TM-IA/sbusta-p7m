@@ -15,9 +15,10 @@ import java.util.TimeZone
 
 /**
  * Kotlin port of sbusta_p7m/core.py (Python). Mirrors it field for
- * field: same "firmatari" schema, same iterative unwrapping of nested
- * envelopes until the raw PDF emerges, same "only the first signer per
- * layer" scope decision. Not a reinterpretation.
+ * field: same "firmatari" schema (including the "livello" field, one
+ * entry per SignerInfo — several co-signers in one layer contribute
+ * several entries), same iterative unwrapping of nested envelopes
+ * until the raw PDF emerges. Not a reinterpretation.
  *
  * Uses explicit Java getter calls (.getFoo()) throughout rather than
  * Kotlin's synthetic property syntax: several BouncyCastle getters
@@ -38,6 +39,7 @@ data class Firmatario(
     val validitaFine: String?,
     val algoritmoFirma: String?,
     val signingTime: String?,
+    val livello: Int,
 )
 
 data class RisultatoEstrazione(
@@ -100,13 +102,7 @@ fun estrai(nomeFile: String, bytesOriginali: ByteArray): RisultatoEstrazione {
             break
         }
 
-        val elencoFirmatari = bustaFirmata.getSignerInfos().getSigners()
-        if (elencoFirmatari.isEmpty()) {
-            firmatari.add(Firmatario(null, null, null, null, null, null, null))
-        } else {
-            val primoFirmatario = elencoFirmatari.iterator().next()
-            firmatari.add(metadataLivello(bustaFirmata, primoFirmatario))
-        }
+        firmatari.addAll(metadataFirmatariLivello(bustaFirmata, livello))
 
         dati = contenutoInterno
         livello += 1
@@ -129,13 +125,29 @@ private fun isPdf(bytes: ByteArray): Boolean {
 }
 
 /**
- * Builds the metadata entry for one envelope layer: the first
- * signer's certificate fields, signature algorithm and signing time.
- * Only the first SignerInfo of this layer is handled (a single CMS
- * SignedData with several co-signers is out of scope in this phase,
- * same as the Python side).
+ * Builds one metadata entry per SignerInfo of this envelope layer (a
+ * single CMS SignedData can carry several co-signers, e.g. a document
+ * signed in parallel by more than one party — distinct from several
+ * nested envelopes, which is the outer while loop in estrai()). No
+ * cap on how many, unlike MAX_LIVELLI for nesting depth: real-world
+ * documents with several co-signers on one layer have been observed.
  */
-private fun metadataLivello(bustaFirmata: CMSSignedData, firmatario: SignerInformation): Firmatario {
+private fun metadataFirmatariLivello(bustaFirmata: CMSSignedData, livello: Int): List<Firmatario> {
+    val elencoFirmatari = bustaFirmata.getSignerInfos().getSigners()
+    if (elencoFirmatari.isEmpty()) {
+        return listOf(Firmatario(null, null, null, null, null, null, null, livello))
+    }
+    return elencoFirmatari.map { metadataSignerInfo(bustaFirmata, it).copy(livello = livello) }
+}
+
+/**
+ * Builds the metadata entry for one signer: certificate fields,
+ * signature algorithm and signing time. "livello" is a 0 placeholder
+ * here, overwritten by the caller's .copy(livello = ...) above — kept
+ * out of this function's parameters since nothing else in its body
+ * needs it.
+ */
+private fun metadataSignerInfo(bustaFirmata: CMSSignedData, firmatario: SignerInformation): Firmatario {
     val algoritmoFirma = firmatario.getEncryptionAlgOID()
 
     var signingTime: String? = null
@@ -152,7 +164,7 @@ private fun metadataLivello(bustaFirmata: CMSSignedData, firmatario: SignerInfor
     }
 
     val certificato = trovaCertificatoFirmatario(bustaFirmata, firmatario)
-        ?: return Firmatario(null, null, null, null, null, algoritmoFirma, signingTime)
+        ?: return Firmatario(null, null, null, null, null, algoritmoFirma, signingTime, livello = 0)
 
     val soggetto: X500Name = certificato.getSubject()
 
@@ -164,6 +176,7 @@ private fun metadataLivello(bustaFirmata: CMSSignedData, firmatario: SignerInfor
         validitaFine = isoFormat().format(certificato.getNotAfter()),
         algoritmoFirma = algoritmoFirma,
         signingTime = signingTime,
+        livello = 0,
     )
 }
 

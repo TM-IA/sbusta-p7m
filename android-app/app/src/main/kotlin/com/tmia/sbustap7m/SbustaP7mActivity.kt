@@ -242,7 +242,8 @@ class SbustaP7mActivity : AppCompatActivity() {
 
     private fun formattaFirmatari(firmatari: List<Firmatario>): String =
         firmatari.joinToString(separator = "\n\n") { f ->
-            "CN: ${f.cn ?: "-"}\n" +
+            "Livello: ${f.livello}\n" +
+                "CN: ${f.cn ?: "-"}\n" +
                 "Organizzazione: ${f.organizzazione ?: "-"}\n" +
                 "Numero seriale: ${f.numeroSeriale ?: "-"}\n" +
                 "Validità: ${f.validitaInizio ?: "-"} — ${f.validitaFine ?: "-"}\n" +
@@ -271,6 +272,7 @@ class SbustaP7mActivity : AppCompatActivity() {
             obj.put("validita_fine", f.validitaFine ?: JSONObject.NULL)
             obj.put("algoritmo_firma", f.algoritmoFirma ?: JSONObject.NULL)
             obj.put("signing_time", f.signingTime ?: JSONObject.NULL)
+            obj.put("livello", f.livello)
             array.put(obj)
         }
         val root = JSONObject()
