@@ -35,6 +35,7 @@ platypus \
     -o "None" \
     -p /bin/sh \
     -D \
+    -R \
     -X "p7m" \
     -f build-macos/dist/sbusta-p7m \
     -f "macos-launcher/sbusta-p7m Help.help" \
