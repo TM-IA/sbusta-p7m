@@ -59,9 +59,13 @@ def estrai(percorso_p7m):
                         "validita_fine": str | None,
                         "algoritmo_firma": str | None,
                         "signing_time": str | None,
+                        "livello": int,
                     },
-                    ...  # one entry per envelope layer crossed,
-                         # outermost signature first
+                    ...  # one entry per SignerInfo crossed, in
+                         # envelope-layer order (outermost first,
+                         # "livello" 0-based); a layer with several
+                         # co-signers contributes several consecutive
+                         # entries sharing the same "livello"
                 ],
             }
 
@@ -117,7 +121,9 @@ def estrai(percorso_p7m):
             # `data` (this envelope's own bytes) as the final content.
             break
 
-        firmatari.append(_metadata_livello(signed_data))
+        for entry in _metadata_firmatari_livello(signed_data):
+            entry["livello"] = livello
+            firmatari.append(entry)
         data = inner_bytes
         livello += 1
 
@@ -132,14 +138,22 @@ def estrai(percorso_p7m):
     return data, metadata
 
 
-def _metadata_livello(signed_data):
-    """Build the metadata entry for one envelope layer: the first
-    signer's certificate fields, signature algorithm and signing time.
+def _metadata_firmatari_livello(signed_data):
+    """Build one metadata entry per SignerInfo of this envelope layer
+    (a single CMS SignedData can carry several co-signers, e.g. a
+    document signed in parallel by more than one party — distinct
+    from several nested envelopes, which is the outer while-loop in
+    estrai()). No cap on how many, unlike MAX_LIVELLI for nesting
+    depth: real-world documents with several co-signers on one layer
+    have been observed."""
+    signer_infos = signed_data["signer_infos"]
+    if len(signer_infos) == 0:
+        return [_entry_vuota()]
+    return [_metadata_signer_info(signed_data, si) for si in signer_infos]
 
-    Only the first SignerInfo of this layer is handled (a single CMS
-    SignedData with several co-signers, as opposed to several nested
-    envelopes, is out of scope in this phase)."""
-    entry = {
+
+def _entry_vuota():
+    return {
         "cn": None,
         "organizzazione": None,
         "numero_seriale": None,
@@ -149,11 +163,11 @@ def _metadata_livello(signed_data):
         "signing_time": None,
     }
 
-    signer_infos = signed_data["signer_infos"]
-    if len(signer_infos) == 0:
-        return entry
 
-    signer_info = signer_infos[0]
+def _metadata_signer_info(signed_data, signer_info):
+    """Build the metadata entry for one signer: certificate fields,
+    signature algorithm and signing time."""
+    entry = _entry_vuota()
     entry["algoritmo_firma"] = signer_info["signature_algorithm"]["algorithm"].native
 
     if signer_info["signed_attrs"].native is not None:
