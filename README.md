@@ -90,19 +90,23 @@ Per ogni `nome.p7m` (o `nome.pdf.p7m`), viene creata una sottocartella
       "validita_inizio": "...",
       "validita_fine": "...",
       "algoritmo_firma": "...",
-      "signing_time": "..."
+      "signing_time": "...",
+      "livello": 0
     }
   ]
 }
 ```
 
-`firmatari` contiene una voce per ogni livello di firma attraversato.
-La maggior parte dei file `.p7m` ha un solo livello (array di
-lunghezza 1); i file firmati più di una volta (`nome.pdf.p7m.p7m`,
-buste CMS annidate) producono una voce per livello, firma più esterna
-per prima. Ogni campo che non è stato possibile risolvere è `null`,
-mai omesso. Verificato su documenti italiani reali firmati fino a tre
-volte.
+`firmatari` contiene una voce per ogni firmatario incontrato, con
+`livello` (indice 0-based) a indicare il livello di firma a cui
+appartiene. Un livello può avere più co-firmatari (documenti reali con
+diversi co-firmatari sullo stesso livello sono stati osservati, nessun
+numero massimo imposto): in quel caso produce più voci consecutive con
+lo stesso `livello`. I file firmati più di una volta
+(`nome.pdf.p7m.p7m`, buste CMS annidate) producono livelli diversi,
+firma più esterna per prima (`livello: 0`); l'annidamento è verificato
+fino a tre livelli su documenti italiani reali. Ogni campo che non è
+stato possibile risolvere è `null`, mai omesso.
 
 ## App macOS
 
@@ -211,8 +215,6 @@ Store/F-Droid in questa fase.
 
 - Nessuna validazione crittografica della firma, della catena di
   certificazione o dello stato di revoca: solo estrazione strutturale.
-- Viene letto solo il primo firmatario di ogni livello di busta (buste
-  co-firmate con più firmatari allo stesso livello non sono gestite).
 
 ---
 
@@ -301,18 +303,23 @@ inside the destination, containing:
       "validita_inizio": "...",
       "validita_fine": "...",
       "algoritmo_firma": "...",
-      "signing_time": "..."
+      "signing_time": "...",
+      "livello": 0
     }
   ]
 }
 ```
 
-`firmatari` holds one entry per signature layer crossed. Most `.p7m`
-files have a single layer (array of length 1); files signed more than
-once (`name.pdf.p7m.p7m`, nested CMS envelopes) produce one entry per
-layer, outermost signature first. Any field that could not be resolved
-is `null`, never omitted. Verified against real Italian documents signed
-up to three times.
+`firmatari` holds one entry per signer encountered, with `livello`
+(0-based) marking which signature layer it belongs to. A layer can
+have several co-signers (real-world documents with several co-signers
+on the same layer have been observed, no maximum enforced): in that
+case it produces several consecutive entries sharing the same
+`livello`. Files signed more than once (`name.pdf.p7m.p7m`, nested CMS
+envelopes) produce distinct layers, outermost signature first
+(`livello: 0`); nesting is verified up to three layers against real
+Italian documents. Any field that could not be resolved is `null`,
+never omitted.
 
 ## macOS app
 
@@ -414,5 +421,3 @@ physical device. No Play Store/F-Droid distribution in this phase.
 
 - No cryptographic validation of the signature, certificate chain, or
   revocation status: structural extraction only.
-- Only the first signer of each envelope layer is read (co-signed
-  envelopes with several signers at the same layer are not handled).
