@@ -54,6 +54,21 @@ jobs:
           grep -q "CI Test Signer" /tmp/out/test/test.json
           echo "smoke test OK"
 
+      - name: Smoke test the fallback path (destination not writable)
+        run: |
+          set -eu
+          mkdir -p /tmp/readonly
+          chmod 000 /tmp/readonly
+          FALLBACK="$HOME/.local/share/sbusta-p7m/estrazioni-fallback"
+          rm -rf "$FALLBACK"
+          PKG_DIR="build-linux/dist/sbusta-p7m-linux-${{ matrix.arch }}"
+          output=$("$PKG_DIR/sbusta-p7m" /tmp/test.p7m -d /tmp/readonly)
+          echo "$output" | grep -q "^fallback: $FALLBACK\$"
+          test -f "$FALLBACK/test/test.pdf"
+          test -f "$FALLBACK/test/test.json"
+          chmod 755 /tmp/readonly
+          echo "smoke test fallback OK"
+
       - name: Check package contents
         run: |
           set -eu
