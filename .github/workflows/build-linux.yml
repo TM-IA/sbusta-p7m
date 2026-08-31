@@ -69,6 +69,28 @@ jobs:
           chmod 755 /tmp/readonly
           echo "smoke test fallback OK"
 
+      - name: Smoke test co-signers (several SignerInfo in one layer)
+        run: |
+          set -eu
+          openssl req -x509 -newkey rsa:2048 -keyout /tmp/key2.pem -out /tmp/cert2.pem \
+              -days 1 -nodes -subj "/CN=CI Test Cosigner/O=sbusta-p7m CI"
+          openssl cms -sign -in /tmp/test.pdf -signer /tmp/cert.pem -inkey /tmp/key.pem \
+              -outform DER -binary -nodetach -out /tmp/step1.p7m
+          openssl cms -resign -in /tmp/step1.p7m -inform DER \
+              -signer /tmp/cert2.pem -inkey /tmp/key2.pem \
+              -outform DER -binary -nodetach -out /tmp/cofirmato.p7m
+          PKG_DIR="build-linux/dist/sbusta-p7m-linux-${{ matrix.arch }}"
+          "$PKG_DIR/sbusta-p7m" /tmp/cofirmato.p7m -d /tmp/out-cofirmato
+          python3 -c "
+          import json
+          d = json.load(open('/tmp/out-cofirmato/cofirmato/cofirmato.json'))
+          assert len(d['firmatari']) == 2, d['firmatari']
+          cn = sorted(f['cn'] for f in d['firmatari'])
+          assert cn == ['CI Test Cosigner', 'CI Test Signer'], cn
+          assert all(f['livello'] == 0 for f in d['firmatari'])
+          "
+          echo "smoke test co-firmatari OK"
+
       - name: Check package contents
         run: |
           set -eu
