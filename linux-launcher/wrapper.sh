@@ -16,6 +16,26 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 CLI="$HOME/.local/bin/sbusta-p7m"
 HELP_TXT="$SCRIPT_DIR/help/index.txt"
 
+# Same path sbusta_p7m/preferenze.py's cartella_config() computes on
+# Linux (XDG). Read directly here (see leggi_preferenza below) instead
+# of always going through the CLI just to read a value back.
+FILE_PREFERENZE="${XDG_CONFIG_HOME:-$HOME/.config}/sbusta-p7m/preferenze.json"
+
+leggi_preferenza() {
+    # $1: chiave ("destinazione" o "log"). Legge preferenze.json
+    # direttamente in shell (grep/sed) invece di invocare il binario
+    # PyInstaller solo per leggere una stringa: un binario --onefile
+    # impiega circa 1-1.5s ad avviarsi (scompatta l'intero runtime
+    # Python a ogni lancio), troppo lento da fare più volte per
+    # aprire un dialogo. Formato JSON controllato da noi stessi
+    # (sbusta_p7m/preferenze.py, json.dump(..., indent=2), un dict
+    # piatto) — non un parser JSON generico. La scrittura
+    # (--set-preferenza) resta invece sul CLI: molto meno frequente,
+    # un costo accettabile per una modifica reale dell'utente.
+    [ -f "$FILE_PREFERENZE" ] || return 0
+    sed -n "s/^  \"$1\": \"\(.*\)\",\{0,1\}\$/\1/p" "$FILE_PREFERENZE" | head -1
+}
+
 scrivi_log_e_mostra() {
     # $1: exit code, $2: full CLI output (stdout+stderr), $3: folder to
     # write the log into. Same reasoning as the macOS wrapper: no GUI
@@ -31,7 +51,7 @@ scrivi_log_e_mostra() {
     # picker, but harmless if it never has one).
     cartella_log="${cartella_log%/}"
 
-    log_abilitato=$("$CLI" --get-preferenza log 2>/dev/null)
+    log_abilitato=$(leggi_preferenza log)
     log_path="$cartella_log/sbusta-p7m-log.txt"
     if [ "$log_abilitato" != "off" ]; then
         {
@@ -86,14 +106,15 @@ Dettagli: $log_path"
 }
 
 mostra_preferenze() {
-    # Read once on entry, not on every loop iteration: the CLI is a
-    # PyInstaller onefile binary with real startup cost (unpacks a
-    # whole Python runtime on each launch) — calling it twice per
-    # dialog redraw made this screen noticeably slow to open. Local
-    # variables are updated directly after each --set-preferenza
-    # instead of re-invoking the CLI to read them back.
-    dest_attuale=$("$CLI" --get-preferenza destinazione 2>/dev/null)
-    log_attuale=$("$CLI" --get-preferenza log 2>/dev/null)
+    # Read once on entry, not on every loop iteration — and via
+    # leggi_preferenza (shell-only, no CLI invocation) rather than the
+    # CLI at all: reading twice through the CLI still took ~2-3s to
+    # open this screen, since even one PyInstaller onefile startup is
+    # noticeable, let alone two in a row. Local variables are updated
+    # directly after each --set-preferenza (still going through the
+    # CLI: writes are rare, this cost is fine there).
+    dest_attuale=$(leggi_preferenza destinazione)
+    log_attuale=$(leggi_preferenza log)
 
     while :; do
         if [ -n "$dest_attuale" ]; then
@@ -155,7 +176,7 @@ if [ "$#" -gt 0 ]; then
     # arguments (file manager "Open With", or a .desktop MIME
     # association). -r is harmless on a single file. A configured
     # default destination applies here too (see mostra_preferenze).
-    destinazione_preferita=$("$CLI" --get-preferenza destinazione 2>/dev/null)
+    destinazione_preferita=$(leggi_preferenza destinazione)
     output=""
     esito_totale=0
     for percorso in "$@"; do
