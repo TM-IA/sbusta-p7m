@@ -140,7 +140,7 @@ mostra_preferenze() {
 
         scelta=$(osascript <<EOF 2>/dev/null
 tell application "System Events" to activate
-set sceltaLista to choose from list {"$voce_dest", "$voce_log", "$voce_modalita"} with prompt "Preferenze sbusta-p7m" with title "sbusta-p7m — Preferenze"
+set sceltaLista to choose from list {"$voce_dest", "$voce_log", "$voce_modalita"} with prompt "Preferenze sbusta-p7m" with title "sbusta-p7m — Preferenze" cancel button name "Indietro"
 if sceltaLista is false then
     return "CHIUDI"
 else
