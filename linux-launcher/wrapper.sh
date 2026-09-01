@@ -25,6 +25,12 @@ scrivi_log_e_mostra() {
     testo_completo="$2"
     cartella_log="$3"
 
+    # Defensive: strip a trailing "/" before concatenating, same as
+    # the macOS wrapper (there it's a documented AppleScript quirk on
+    # "choose folder"; not confirmed here for zenity's directory
+    # picker, but harmless if it never has one).
+    cartella_log="${cartella_log%/}"
+
     log_abilitato=$("$CLI" --get-preferenza log 2>/dev/null)
     log_path="$cartella_log/sbusta-p7m-log.txt"
     if [ "$log_abilitato" != "off" ]; then
@@ -80,10 +86,16 @@ Dettagli: $log_path"
 }
 
 mostra_preferenze() {
-    while :; do
-        dest_attuale=$("$CLI" --get-preferenza destinazione 2>/dev/null)
-        log_attuale=$("$CLI" --get-preferenza log 2>/dev/null)
+    # Read once on entry, not on every loop iteration: the CLI is a
+    # PyInstaller onefile binary with real startup cost (unpacks a
+    # whole Python runtime on each launch) — calling it twice per
+    # dialog redraw made this screen noticeably slow to open. Local
+    # variables are updated directly after each --set-preferenza
+    # instead of re-invoking the CLI to read them back.
+    dest_attuale=$("$CLI" --get-preferenza destinazione 2>/dev/null)
+    log_attuale=$("$CLI" --get-preferenza log 2>/dev/null)
 
+    while :; do
         if [ -n "$dest_attuale" ]; then
             bottone_dest="Rimuovi cartella predefinita"
             dest_testo="$dest_attuale"
@@ -112,16 +124,23 @@ Log: $log_testo" \
             "$bottone_dest")
                 if [ -n "$dest_attuale" ]; then
                     "$CLI" --set-preferenza destinazione ""
+                    dest_attuale=""
                 else
                     nuova=$(zenity --file-selection --directory --title="Cartella predefinita" 2>/dev/null)
-                    [ -n "$nuova" ] && "$CLI" --set-preferenza destinazione "$nuova"
+                    nuova="${nuova%/}"
+                    if [ -n "$nuova" ]; then
+                        "$CLI" --set-preferenza destinazione "$nuova"
+                        dest_attuale="$nuova"
+                    fi
                 fi
                 ;;
             "$bottone_log")
                 if [ "$log_attuale" = "off" ]; then
                     "$CLI" --set-preferenza log on
+                    log_attuale="on"
                 else
                     "$CLI" --set-preferenza log off
+                    log_attuale="off"
                 fi
                 ;;
             *)
@@ -235,6 +254,7 @@ while :; do  # level 1: File / Cartella / Aiuto / Preferenze
             elif [ "$scelta" = "Scegli..." ]; then
                 destinazione=$(zenity --file-selection --directory \
                     --title="Cartella di destinazione" 2>/dev/null)
+                destinazione="${destinazione%/}"
                 [ -n "$destinazione" ] && break
             else
                 # Annulla/Esc at level 3: goes back to level 2 (re-pick
