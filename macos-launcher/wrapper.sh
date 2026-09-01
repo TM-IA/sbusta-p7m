@@ -10,6 +10,26 @@ set -u
 # on the recipient's system.
 CLI="./sbusta-p7m"
 
+# Same path sbusta_p7m/preferenze.py's cartella_config() computes on
+# macOS. Read directly here (see leggi_preferenza below) instead of
+# always going through the CLI just to read a value back.
+FILE_PREFERENZE="$HOME/Library/Application Support/sbusta-p7m/preferenze.json"
+
+leggi_preferenza() {
+    # $1: chiave ("destinazione" o "log"). Legge preferenze.json
+    # direttamente in shell (grep/sed) invece di invocare il binario
+    # PyInstaller solo per leggere una stringa: un binario --onefile
+    # impiega circa 1-1.5s ad avviarsi (scompatta l'intero runtime
+    # Python a ogni lancio), troppo lento da fare più volte per
+    # aprire un dialogo. Formato JSON controllato da noi stessi
+    # (sbusta_p7m/preferenze.py, json.dump(..., indent=2), un dict
+    # piatto) — non un parser JSON generico. La scrittura
+    # (--set-preferenza) resta invece sul CLI: molto meno frequente,
+    # un costo accettabile per una modifica reale dell'utente.
+    [ -f "$FILE_PREFERENZE" ] || return 0
+    sed -n "s/^  \"$1\": \"\(.*\)\",\{0,1\}\$/\1/p" "$FILE_PREFERENZE" | head -1
+}
+
 scrivi_log_e_mostra() {
     # $1: exit code, $2: full CLI output (stdout+stderr), $3: folder to
     # write the log into. A "display dialog" box cannot be resized or
@@ -25,7 +45,7 @@ scrivi_log_e_mostra() {
     # concatenating, or the log path ends up with a doubled "//".
     cartella_log="${cartella_log%/}"
 
-    log_abilitato=$("$CLI" --get-preferenza log 2>/dev/null)
+    log_abilitato=$(leggi_preferenza log)
     log_path="$cartella_log/sbusta-p7m-log.txt"
     if [ "$log_abilitato" != "off" ]; then
         {
@@ -91,14 +111,15 @@ EOF
 }
 
 mostra_preferenze() {
-    # Read once on entry, not on every loop iteration: the CLI is a
-    # PyInstaller onefile binary with real startup cost (unpacks a
-    # whole Python runtime on each launch) — calling it twice per
-    # dialog redraw made this screen noticeably slow to open. Local
-    # variables are updated directly after each --set-preferenza
-    # instead of re-invoking the CLI to read them back.
-    dest_attuale=$("$CLI" --get-preferenza destinazione 2>/dev/null)
-    log_attuale=$("$CLI" --get-preferenza log 2>/dev/null)
+    # Read once on entry, not on every loop iteration — and via
+    # leggi_preferenza (shell-only, no CLI invocation) rather than the
+    # CLI at all: reading twice through the CLI still took ~2-3s to
+    # open this screen, since even one PyInstaller onefile startup is
+    # noticeable, let alone two in a row. Local variables are updated
+    # directly after each --set-preferenza (still going through the
+    # CLI: writes are rare, this cost is fine there).
+    dest_attuale=$(leggi_preferenza destinazione)
+    log_attuale=$(leggi_preferenza log)
 
     while :; do
         if [ -n "$dest_attuale" ]; then
@@ -159,7 +180,7 @@ if [ "$#" -gt 0 ]; then
     # mostra_preferenze); without it, log written next to the first
     # dropped item, same as before — with multiple drops there's no
     # single shared destination folder to prefer instead.
-    destinazione_preferita=$("$CLI" --get-preferenza destinazione 2>/dev/null)
+    destinazione_preferita=$(leggi_preferenza destinazione)
     output=""
     esito_totale=0
     for percorso in "$@"; do
@@ -222,7 +243,14 @@ EOF
     percorsi=$(osascript -l JavaScript <<'EOF' 2>/dev/null
 ObjC.import('AppKit');
 function run() {
+    // Without this, osascript never becomes the frontmost process on
+    // its own (same root cause as the "activate" added to the
+    // AppleScript dialogs above) — the panel showed but clicks inside
+    // it were misrouted, closing it immediately instead of selecting
+    // anything. floatingPanel helps it keep focus once activated.
+    $.NSApplication.sharedApplication.activateIgnoringOtherApps(true);
     var panel = $.NSOpenPanel.openPanel;
+    panel.floatingPanel = true;
     panel.canChooseFiles = true;
     panel.canChooseDirectories = true;
     panel.allowsMultipleSelection = true;
