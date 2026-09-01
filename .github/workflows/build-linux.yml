@@ -91,6 +91,25 @@ jobs:
           "
           echo "smoke test co-firmatari OK"
 
+      - name: Smoke test the hidden preferences contract
+        run: |
+          set -eu
+          PKG_DIR="build-linux/dist/sbusta-p7m-linux-${{ matrix.arch }}"
+          BIN="$PKG_DIR/sbusta-p7m"
+          [ "$("$BIN" --get-preferenza log)" = "on" ]
+          [ -z "$("$BIN" --get-preferenza destinazione)" ]
+          "$BIN" --set-preferenza destinazione /tmp/una-cartella
+          [ "$("$BIN" --get-preferenza destinazione)" = "/tmp/una-cartella" ]
+          "$BIN" --set-preferenza log off
+          [ "$("$BIN" --get-preferenza log)" = "off" ]
+          "$BIN" --set-preferenza destinazione ""
+          [ -z "$("$BIN" --get-preferenza destinazione)" ]
+          if "$BIN" --help | grep -qi "preferenza"; then
+              echo "i flag nascosti non devono comparire in --help" >&2
+              exit 1
+          fi
+          echo "smoke test preferenze OK"
+
       - name: Check package contents
         run: |
           set -eu
