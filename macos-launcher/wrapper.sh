@@ -260,6 +260,7 @@ fi
 # it to go back to; cancelling at any deeper step returns here instead.
 modalita=$(leggi_preferenza modalita)
 [ -z "$modalita" ] && modalita="Chiedi"
+destinazione_preferita=$(leggi_preferenza destinazione)
 
 while :; do  # top level: File / Cartella / Preferenze
     if [ "$modalita" = "Chiedi" ]; then
@@ -279,6 +280,7 @@ EOF
             mostra_preferenze
             modalita=$(leggi_preferenza modalita)
             [ -z "$modalita" ] && modalita="Chiedi"
+            destinazione_preferita=$(leggi_preferenza destinazione)
             continue
         fi
     else
@@ -298,6 +300,7 @@ EOF
             mostra_preferenze
             modalita=$(leggi_preferenza modalita)
             [ -z "$modalita" ] && modalita="Chiedi"
+            destinazione_preferita=$(leggi_preferenza destinazione)
             continue
         fi
         tipo="$modalita"
@@ -331,40 +334,47 @@ EOF
     # an empty-but-zero-exit edge case.
     [ -z "$percorsi" ] && continue
 
-    destinazione=""
-    annullato=0
-    while :; do  # destination folder, applies to the whole selection
-        scelta_dest=$(osascript <<'EOF' 2>/dev/null
+    if [ -n "$destinazione_preferita" ]; then
+        # A configured default destination is used directly, same as
+        # droplet mode — not offered as one more option alongside
+        # "Cartella sorgente"/"Scegli...", the whole dialog is skipped.
+        destinazione="$destinazione_preferita"
+    else
+        destinazione=""
+        annullato=0
+        while :; do  # destination folder, applies to the whole selection
+            scelta_dest=$(osascript <<'EOF' 2>/dev/null
 tell application "System Events" to activate
 display dialog "Cartella di destinazione?" buttons {"Annulla", "Cartella sorgente", "Scegli..."} default button "Cartella sorgente" cancel button "Annulla" with title "sbusta-p7m"
 button returned of result
 EOF
-        )
-        ret=$?
-        if [ "$ret" -ne 0 ]; then
-            # Esc, window close, or "Annulla" itself (now the cancel
-            # button, so a click on it also raises -128): same effect.
-            annullato=1
-            break
-        fi
-        case "$scelta_dest" in
-            "Cartella sorgente")
+            )
+            ret=$?
+            if [ "$ret" -ne 0 ]; then
+                # Esc, window close, or "Annulla" itself (now the cancel
+                # button, so a click on it also raises -128): same effect.
+                annullato=1
                 break
-                ;;
-            "Scegli...")
-                destinazione=$(osascript -e 'POSIX path of (choose folder with prompt "Cartella di destinazione:")' 2>/dev/null)
-                destinazione="${destinazione%/}"
-                # If this inner picker is itself cancelled,
-                # $destinazione stays empty and we loop back to the
-                # three-way choice above, instead of guessing what the
-                # user meant.
-                [ -n "$destinazione" ] && break
-                ;;
-        esac
-    done
-    # Cancelling the destination choice goes back to the top level
-    # (re-pick what to extract), doesn't exit the app.
-    [ "$annullato" -eq 1 ] && continue
+            fi
+            case "$scelta_dest" in
+                "Cartella sorgente")
+                    break
+                    ;;
+                "Scegli...")
+                    destinazione=$(osascript -e 'POSIX path of (choose folder with prompt "Cartella di destinazione:")' 2>/dev/null)
+                    destinazione="${destinazione%/}"
+                    # If this inner picker is itself cancelled,
+                    # $destinazione stays empty and we loop back to the
+                    # three-way choice above, instead of guessing what the
+                    # user meant.
+                    [ -n "$destinazione" ] && break
+                    ;;
+            esac
+        done
+        # Cancelling the destination choice goes back to the top level
+        # (re-pick what to extract), doesn't exit the app.
+        [ "$annullato" -eq 1 ] && continue
+    fi
 
     break  # proceeds to extraction
 done
