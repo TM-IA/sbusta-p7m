@@ -8,7 +8,7 @@ import json
 import os
 import sys
 
-_CHIAVI_VALIDE = {"destinazione", "log"}
+_CHIAVI_VALIDE = {"destinazione", "log", "modalita"}
 _FILE_PREFERENZE = "preferenze.json"
 
 

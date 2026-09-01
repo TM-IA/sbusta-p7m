@@ -16,7 +16,7 @@ CLI="./sbusta-p7m"
 FILE_PREFERENZE="$HOME/Library/Application Support/sbusta-p7m/preferenze.json"
 
 leggi_preferenza() {
-    # $1: chiave ("destinazione" o "log"). Legge preferenze.json
+    # $1: chiave ("destinazione", "log" o "modalita"). Legge preferenze.json
     # direttamente in shell (grep/sed) invece di invocare il binario
     # PyInstaller solo per leggere una stringa: un binario --onefile
     # impiega circa 1-1.5s ad avviarsi (scompatta l'intero runtime
@@ -111,42 +111,47 @@ EOF
 }
 
 mostra_preferenze() {
-    # Read once on entry, not on every loop iteration — and via
-    # leggi_preferenza (shell-only, no CLI invocation) rather than the
-    # CLI at all: reading twice through the CLI still took ~2-3s to
-    # open this screen, since even one PyInstaller onefile startup is
-    # noticeable, let alone two in a row. Local variables are updated
-    # directly after each --set-preferenza (still going through the
-    # CLI: writes are rare, this cost is fine there).
+    # "choose from list" instead of "display dialog": three
+    # independent settings (cartella, log, modalità) plus a close
+    # action don't fit in display dialog's 3-button cap. Read once on
+    # entry via leggi_preferenza (shell-only, no CLI invocation) —
+    # reading through the CLI still took ~2-3s to open this screen,
+    # since even one PyInstaller onefile startup is noticeable, let
+    # alone several. Local variables are updated directly after each
+    # --set-preferenza (still going through the CLI: writes are rare,
+    # this cost is fine there).
     dest_attuale=$(leggi_preferenza destinazione)
     log_attuale=$(leggi_preferenza log)
+    modalita_attuale=$(leggi_preferenza modalita)
+    [ -z "$modalita_attuale" ] && modalita_attuale="Chiedi"
 
     while :; do
         if [ -n "$dest_attuale" ]; then
-            bottone_dest="Rimuovi cartella predefinita"
-            dest_testo="$dest_attuale"
+            voce_dest="Cartella predefinita: $dest_attuale (clic per rimuovere)"
         else
-            bottone_dest="Imposta cartella predefinita..."
-            dest_testo="(nessuna, usa la cartella del file sorgente)"
+            voce_dest="Cartella predefinita: nessuna (clic per impostare)"
         fi
         if [ "$log_attuale" = "off" ]; then
-            bottone_log="Attiva il log"
-            log_testo="disattivato"
+            voce_log="Log: disattivato (clic per attivare)"
         else
-            bottone_log="Disattiva il log"
-            log_testo="attivo"
+            voce_log="Log: attivo (clic per disattivare)"
         fi
+        voce_modalita="Modalità apertura: $modalita_attuale (clic per cambiare)"
 
         scelta=$(osascript <<EOF 2>/dev/null
 tell application "System Events" to activate
-display dialog "Cartella predefinita: $dest_testo
-Log: $log_testo" buttons {"$bottone_dest", "$bottone_log", "Chiudi"} default button "Chiudi" cancel button "Chiudi" with title "sbusta-p7m — Preferenze"
-button returned of result
+set sceltaLista to choose from list {"$voce_dest", "$voce_log", "$voce_modalita"} with prompt "Preferenze sbusta-p7m" with title "sbusta-p7m — Preferenze"
+if sceltaLista is false then
+    return "CHIUDI"
+else
+    return item 1 of sceltaLista
+end if
 EOF
-        ) || break
+        )
+        [ "$scelta" = "CHIUDI" ] && break
 
         case "$scelta" in
-            "$bottone_dest")
+            "$voce_dest")
                 if [ -n "$dest_attuale" ]; then
                     "$CLI" --set-preferenza destinazione ""
                     dest_attuale=""
@@ -159,7 +164,7 @@ EOF
                     fi
                 fi
                 ;;
-            "$bottone_log")
+            "$voce_log")
                 if [ "$log_attuale" = "off" ]; then
                     "$CLI" --set-preferenza log on
                     log_attuale="on"
@@ -167,6 +172,14 @@ EOF
                     "$CLI" --set-preferenza log off
                     log_attuale="off"
                 fi
+                ;;
+            "$voce_modalita")
+                case "$modalita_attuale" in
+                    Chiedi) modalita_attuale="File" ;;
+                    File) modalita_attuale="Cartella" ;;
+                    Cartella) modalita_attuale="Chiedi" ;;
+                esac
+                "$CLI" --set-preferenza modalita "$modalita_attuale"
                 ;;
         esac
     done
@@ -216,20 +229,25 @@ fi
 # land on the same page (opens Help Viewer's general view instead) —
 # not worth a redundant, less reliable path to the same content.
 #
-# Interactive mode, two real steps: a top-level choice (File /
-# Cartella / Preferenze, via "choose from list" — not "display
-# dialog", which caps out at 3 buttons and had no room left for a
-# real Annulla once Preferenze was added), then a native picker for
-# one or more items of the chosen type. Classic AppleScript has no
-# single verb that lets you pick files and folders together (verified
-# against Apple's own docs) — Cocoa's NSOpenPanel does, but calling it
-# directly from JXA proved unreliable in this exact context (a
-# faceless Platypus script): the panel opened but closed itself on
-# any click inside it, even after forcing activation. "choose file"/
-# "choose folder" are the same Standard Additions family already
-# proven to work here (mostra_preferenze's folder picker), so back to
-# those, each with "multiple selections allowed" — files and folders
-# just can't be mixed in the same pick.
+# Interactive mode. The top level itself branches on the "modalita"
+# preference (see mostra_preferenze): "Chiedi" (default) asks File vs
+# Cartella via "choose from list" every time (not "display dialog",
+# which caps out at 3 buttons — no room left for a real Annulla once
+# Preferenze is also offered); "File" or "Cartella" skips straight to
+# that picker, freeing enough room for a plain 3-button display dialog
+# (Annulla/Preferenze/Seleziona — no type choice needed, it's already
+# decided) instead of the plainer-looking list.
+#
+# Classic AppleScript has no single verb that lets you pick files and
+# folders together (verified against Apple's own docs) — Cocoa's
+# NSOpenPanel does, but calling it directly from JXA proved unreliable
+# in this exact context (a faceless Platypus script): the panel opened
+# but closed itself on any click inside it, even after forcing
+# activation. "choose file"/"choose folder" are the same Standard
+# Additions family already proven to work here (mostra_preferenze's
+# folder picker), so those are used instead, each with "multiple
+# selections allowed" — files and folders just can't be mixed in the
+# same pick.
 #
 # Cancel behavior differs by verb, handled accordingly below:
 # "choose from list" doesn't raise an error on Cancel/Esc, it returns
@@ -240,8 +258,12 @@ fi
 #
 # "Annulla" (or Esc) at this top level is a real exit — nothing above
 # it to go back to; cancelling at any deeper step returns here instead.
+modalita=$(leggi_preferenza modalita)
+[ -z "$modalita" ] && modalita="Chiedi"
+
 while :; do  # top level: File / Cartella / Preferenze
-    tipo=$(osascript <<'EOF' 2>/dev/null
+    if [ "$modalita" = "Chiedi" ]; then
+        tipo=$(osascript <<'EOF' 2>/dev/null
 tell application "System Events" to activate
 set scelta to choose from list {"File", "Cartella", "Preferenze"} with prompt "Estrarre uno o più file .p7m, o tutti quelli in una o più cartelle?" with title "sbusta-p7m"
 if scelta is false then
@@ -250,12 +272,35 @@ else
     return item 1 of scelta
 end if
 EOF
-    )
-    [ "$tipo" = "ANNULLA" ] && exit 0
+        )
+        [ "$tipo" = "ANNULLA" ] && exit 0
 
-    if [ "$tipo" = "Preferenze" ]; then
-        mostra_preferenze
-        continue
+        if [ "$tipo" = "Preferenze" ]; then
+            mostra_preferenze
+            modalita=$(leggi_preferenza modalita)
+            [ -z "$modalita" ] && modalita="Chiedi"
+            continue
+        fi
+    else
+        if [ "$modalita" = "File" ]; then
+            testo_rapido="Estrarre uno o più file .p7m?"
+        else
+            testo_rapido="Estrarre tutti i file .p7m di una o più cartelle?"
+        fi
+        scelta_rapida=$(osascript <<EOF 2>/dev/null
+tell application "System Events" to activate
+display dialog "$testo_rapido" buttons {"Annulla", "Preferenze...", "Seleziona..."} default button "Seleziona..." cancel button "Annulla" with title "sbusta-p7m"
+button returned of result
+EOF
+        ) || exit 0
+
+        if [ "$scelta_rapida" = "Preferenze..." ]; then
+            mostra_preferenze
+            modalita=$(leggi_preferenza modalita)
+            [ -z "$modalita" ] && modalita="Chiedi"
+            continue
+        fi
+        tipo="$modalita"
     fi
 
     if [ "$tipo" = "File" ]; then

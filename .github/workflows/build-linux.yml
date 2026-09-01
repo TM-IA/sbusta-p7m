@@ -104,6 +104,8 @@ jobs:
           [ "$("$BIN" --get-preferenza log)" = "off" ]
           "$BIN" --set-preferenza destinazione ""
           [ -z "$("$BIN" --get-preferenza destinazione)" ]
+          "$BIN" --set-preferenza modalita Cartella
+          [ "$("$BIN" --get-preferenza modalita)" = "Cartella" ]
           if "$BIN" --help | grep -qi "preferenza"; then
               echo "i flag nascosti non devono comparire in --help" >&2
               exit 1
