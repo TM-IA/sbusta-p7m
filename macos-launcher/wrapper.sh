@@ -20,12 +20,19 @@ scrivi_log_e_mostra() {
     testo_completo="$2"
     cartella_log="$3"
 
+    log_abilitato=$("$CLI" --get-preferenza log 2>/dev/null)
     log_path="$cartella_log/sbusta-p7m-log.txt"
-    {
-        echo "=== $(date '+%Y-%m-%d %H:%M:%S') ==="
-        printf '%s\n' "$testo_completo"
-        echo
-    } >> "$log_path" 2>/dev/null
+    if [ "$log_abilitato" != "off" ]; then
+        {
+            echo "=== $(date '+%Y-%m-%d %H:%M:%S') ==="
+            printf '%s\n' "$testo_completo"
+            echo
+        } >> "$log_path" 2>/dev/null
+        dettagli="
+Dettagli: $log_path"
+    else
+        dettagli=""
+    fi
 
     # Reuse the CLI's own "riepilogo: N ok, M falliti" line verbatim
     # when present (batch mode) instead of recomputing counts here —
@@ -40,8 +47,7 @@ scrivi_log_e_mostra() {
         fi
     fi
 
-    export P7M_OUTPUT="$riepilogo
-Dettagli: $log_path"
+    export P7M_OUTPUT="$riepilogo$dettagli"
 
     # When at least one file was saved to the fallback folder (see
     # sbusta_p7m/cli.py's "fallback: <cartella>" line), offer a button
@@ -72,16 +78,73 @@ EOF
     fi
 }
 
+mostra_preferenze() {
+    while :; do
+        dest_attuale=$("$CLI" --get-preferenza destinazione 2>/dev/null)
+        log_attuale=$("$CLI" --get-preferenza log 2>/dev/null)
+
+        if [ -n "$dest_attuale" ]; then
+            bottone_dest="Rimuovi cartella predefinita"
+            dest_testo="$dest_attuale"
+        else
+            bottone_dest="Imposta cartella predefinita..."
+            dest_testo="(nessuna, usa la cartella del file sorgente)"
+        fi
+        if [ "$log_attuale" = "off" ]; then
+            bottone_log="Attiva il log"
+            log_testo="disattivato"
+        else
+            bottone_log="Disattiva il log"
+            log_testo="attivo"
+        fi
+
+        scelta=$(osascript <<EOF 2>/dev/null
+display dialog "Cartella predefinita: $dest_testo
+Log: $log_testo" buttons {"$bottone_dest", "$bottone_log", "Chiudi"} default button "Chiudi" with title "sbusta-p7m — Preferenze"
+button returned of result
+EOF
+        ) || break
+
+        case "$scelta" in
+            "$bottone_dest")
+                if [ -n "$dest_attuale" ]; then
+                    "$CLI" --set-preferenza destinazione ""
+                else
+                    nuova=$(osascript -e 'POSIX path of (choose folder with prompt "Cartella predefinita:")' 2>/dev/null)
+                    [ -n "$nuova" ] && "$CLI" --set-preferenza destinazione "$nuova"
+                fi
+                ;;
+            "$bottone_log")
+                if [ "$log_attuale" = "off" ]; then
+                    "$CLI" --set-preferenza log on
+                else
+                    "$CLI" --set-preferenza log off
+                fi
+                ;;
+            "Chiudi")
+                break
+                ;;
+        esac
+    done
+}
+
 if [ "$#" -gt 0 ]; then
     # Droplet mode: one or more files/folders dropped onto the app icon.
     # -r is harmless on a single file (the CLI only applies it to
     # folders), and is the more useful default for a dropped folder.
-    # Log written next to the first dropped item: with multiple drops
-    # there is no single shared destination folder to prefer instead.
+    # A configured default destination applies here too (see
+    # mostra_preferenze); without it, log written next to the first
+    # dropped item, same as before — with multiple drops there's no
+    # single shared destination folder to prefer instead.
+    destinazione_preferita=$("$CLI" --get-preferenza destinazione 2>/dev/null)
     output=""
     esito_totale=0
     for percorso in "$@"; do
-        out=$("$CLI" "$percorso" -r 2>&1)
+        if [ -n "$destinazione_preferita" ]; then
+            out=$("$CLI" "$percorso" -r -d "$destinazione_preferita" 2>&1)
+        else
+            out=$("$CLI" "$percorso" -r 2>&1)
+        fi
         esito=$?
         output="$output=== $percorso ===
 $out
@@ -91,7 +154,9 @@ $out
             esito_totale=1
         fi
     done
-    if [ -d "$1" ]; then
+    if [ -n "$destinazione_preferita" ]; then
+        cartella_log="$destinazione_preferita"
+    elif [ -d "$1" ]; then
         cartella_log="$1"
     else
         cartella_log=$(dirname "$1")
@@ -111,12 +176,17 @@ fi
 # structure as Linux (linux-launcher/wrapper.sh): Annulla/Esc at any
 # level returns to the level above instead of exiting — only level 1
 # (nothing above it) is a real exit.
-while :; do  # level 1: File / Cartella
+while :; do  # level 1: File / Cartella / Preferenze
     tipo=$(osascript <<'EOF' 2>/dev/null
-display dialog "Estrarre un file .p7m singolo o tutti i file in una cartella?" buttons {"File", "Cartella"} default button "File" with title "sbusta-p7m"
+display dialog "Estrarre un file .p7m singolo o tutti i file in una cartella?" buttons {"File", "Cartella", "Preferenze..."} default button "File" with title "sbusta-p7m"
 button returned of result
 EOF
     ) || exit 0
+
+    if [ "$tipo" = "Preferenze..." ]; then
+        mostra_preferenze
+        continue
+    fi
 
     while :; do  # level 2: source file/folder selection
         if [ "$tipo" = "File" ]; then

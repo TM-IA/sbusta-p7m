@@ -25,12 +25,19 @@ scrivi_log_e_mostra() {
     testo_completo="$2"
     cartella_log="$3"
 
+    log_abilitato=$("$CLI" --get-preferenza log 2>/dev/null)
     log_path="$cartella_log/sbusta-p7m-log.txt"
-    {
-        echo "=== $(date '+%Y-%m-%d %H:%M:%S') ==="
-        printf '%s\n' "$testo_completo"
-        echo
-    } >> "$log_path" 2>/dev/null
+    if [ "$log_abilitato" != "off" ]; then
+        {
+            echo "=== $(date '+%Y-%m-%d %H:%M:%S') ==="
+            printf '%s\n' "$testo_completo"
+            echo
+        } >> "$log_path" 2>/dev/null
+        dettagli="
+Dettagli: $log_path"
+    else
+        dettagli=""
+    fi
 
     riepilogo=$(printf '%s\n' "$testo_completo" | grep '^riepilogo:' | tail -1)
     if [ -z "$riepilogo" ]; then
@@ -59,30 +66,85 @@ scrivi_log_e_mostra() {
             icona="--icon-name=dialog-error"
         fi
         zenity --question --title="$titolo" $icona \
-            --text="$riepilogo
-Dettagli: $log_path" \
+            --text="$riepilogo$dettagli" \
             --ok-label="Apri cartella" --cancel-label="OK" 2>/dev/null
         ret=$?
         [ "$ret" -eq 0 ] && xdg-open "$cartella_fallback" >/dev/null 2>&1 &
     elif [ "$esito_totale" -eq 0 ]; then
         zenity --info --title="sbusta-p7m" \
-            --text="$riepilogo
-Dettagli: $log_path" 2>/dev/null
+            --text="$riepilogo$dettagli" 2>/dev/null
     else
         zenity --error --title="sbusta-p7m — completato con errori" \
-            --text="$riepilogo
-Dettagli: $log_path" 2>/dev/null
+            --text="$riepilogo$dettagli" 2>/dev/null
     fi
+}
+
+mostra_preferenze() {
+    while :; do
+        dest_attuale=$("$CLI" --get-preferenza destinazione 2>/dev/null)
+        log_attuale=$("$CLI" --get-preferenza log 2>/dev/null)
+
+        if [ -n "$dest_attuale" ]; then
+            bottone_dest="Rimuovi cartella predefinita"
+            dest_testo="$dest_attuale"
+        else
+            bottone_dest="Imposta cartella predefinita..."
+            dest_testo="(nessuna, usa la cartella del file sorgente)"
+        fi
+        if [ "$log_attuale" = "off" ]; then
+            bottone_log="Attiva il log"
+            log_testo="disattivato"
+        else
+            bottone_log="Disattiva il log"
+            log_testo="attivo"
+        fi
+
+        risposta=$(zenity --question --title="sbusta-p7m — Preferenze" \
+            --text="Cartella predefinita: $dest_testo
+Log: $log_testo" \
+            --ok-label="Chiudi" --cancel-label="Annulla" \
+            --extra-button="$bottone_dest" --extra-button="$bottone_log" 2>/dev/null)
+        ret=$?
+        if [ "$ret" -eq 0 ]; then
+            break
+        fi
+        case "$risposta" in
+            "$bottone_dest")
+                if [ -n "$dest_attuale" ]; then
+                    "$CLI" --set-preferenza destinazione ""
+                else
+                    nuova=$(zenity --file-selection --directory --title="Cartella predefinita" 2>/dev/null)
+                    [ -n "$nuova" ] && "$CLI" --set-preferenza destinazione "$nuova"
+                fi
+                ;;
+            "$bottone_log")
+                if [ "$log_attuale" = "off" ]; then
+                    "$CLI" --set-preferenza log on
+                else
+                    "$CLI" --set-preferenza log off
+                fi
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
 }
 
 if [ "$#" -gt 0 ]; then
     # Droplet-equivalent: one or more files/folders passed as
     # arguments (file manager "Open With", or a .desktop MIME
-    # association). -r is harmless on a single file.
+    # association). -r is harmless on a single file. A configured
+    # default destination applies here too (see mostra_preferenze).
+    destinazione_preferita=$("$CLI" --get-preferenza destinazione 2>/dev/null)
     output=""
     esito_totale=0
     for percorso in "$@"; do
-        out=$("$CLI" "$percorso" -r 2>&1)
+        if [ -n "$destinazione_preferita" ]; then
+            out=$("$CLI" "$percorso" -r -d "$destinazione_preferita" 2>&1)
+        else
+            out=$("$CLI" "$percorso" -r 2>&1)
+        fi
         esito=$?
         output="$output=== $percorso ===
 $out
@@ -92,7 +154,9 @@ $out
             esito_totale=1
         fi
     done
-    if [ -d "$1" ]; then
+    if [ -n "$destinazione_preferita" ]; then
+        cartella_log="$destinazione_preferita"
+    elif [ -d "$1" ]; then
         cartella_log="$1"
     else
         cartella_log=$(dirname "$1")
@@ -117,7 +181,7 @@ fi
 # standard POSIX syntax (not a bashism), verified here where /bin/sh is
 # bash, but not tested against dash in this session (on Debian/Ubuntu
 # /bin/sh is dash) — to be reconfirmed if issues show up there.
-while :; do  # level 1: File / Cartella / Aiuto
+while :; do  # level 1: File / Cartella / Aiuto / Preferenze
     # --no-cancel is not supported by this dialog type (verified:
     # zenity exits immediately with "--no-cancel is not supported for
     # this dialog"), so the Cancel button can't be hidden: it stays
@@ -125,7 +189,7 @@ while :; do  # level 1: File / Cartella / Aiuto
     risposta=$(zenity --question --title="sbusta-p7m" \
         --text="Estrarre un file .p7m singolo o tutti i file in una cartella?" \
         --ok-label="File" --cancel-label="Annulla" \
-        --extra-button="Cartella" --extra-button="Aiuto" 2>/dev/null)
+        --extra-button="Cartella" --extra-button="Aiuto" --extra-button="Preferenze..." 2>/dev/null)
     ret=$?
     if [ "$ret" -eq 0 ]; then
         tipo="File"
@@ -134,6 +198,9 @@ while :; do  # level 1: File / Cartella / Aiuto
     elif [ "$risposta" = "Aiuto" ]; then
         zenity --text-info --title="sbusta-p7m — Aiuto" \
             --filename="$HELP_TXT" --width=560 --height=440 2>/dev/null
+        continue
+    elif [ "$risposta" = "Preferenze..." ]; then
+        mostra_preferenze
         continue
     else
         # No level above this one: Annulla/Esc/window close really do
