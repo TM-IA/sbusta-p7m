@@ -20,6 +20,11 @@ scrivi_log_e_mostra() {
     testo_completo="$2"
     cartella_log="$3"
 
+    # A folder picked via "choose folder" always comes back with a
+    # trailing "/" (documented AppleScript behavior) — strip it before
+    # concatenating, or the log path ends up with a doubled "//".
+    cartella_log="${cartella_log%/}"
+
     log_abilitato=$("$CLI" --get-preferenza log 2>/dev/null)
     log_path="$cartella_log/sbusta-p7m-log.txt"
     if [ "$log_abilitato" != "off" ]; then
@@ -62,27 +67,40 @@ Dettagli: $log_path"
         icona=" with icon caution"
     fi
 
+    # "activate" first: a faceless script's dialog does not reliably
+    # become frontmost on its own (documented AppleScript/Cocoa
+    # behavior for InterfaceType-less Platypus apps) — without this,
+    # the menu bar can stay on whatever app was active before, and
+    # keyboard input (Esc included) may not reach the dialog at all.
     if [ -n "$cartella_fallback" ]; then
         risultato=$(osascript <<EOF
+tell application "System Events" to activate
 set msg to system attribute "P7M_OUTPUT"
-display dialog msg with title "$titolo" buttons {"Apri cartella", "OK"} default button "OK"$icona
+display dialog msg with title "$titolo" buttons {"Apri cartella", "OK"} default button "OK" cancel button "OK"$icona
 button returned of result
 EOF
         )
         [ "$risultato" = "Apri cartella" ] && open "$cartella_fallback"
     else
         osascript <<EOF
+tell application "System Events" to activate
 set msg to system attribute "P7M_OUTPUT"
-display dialog msg with title "$titolo" buttons {"OK"} default button "OK"$icona
+display dialog msg with title "$titolo" buttons {"OK"} default button "OK" cancel button "OK"$icona
 EOF
     fi
 }
 
 mostra_preferenze() {
-    while :; do
-        dest_attuale=$("$CLI" --get-preferenza destinazione 2>/dev/null)
-        log_attuale=$("$CLI" --get-preferenza log 2>/dev/null)
+    # Read once on entry, not on every loop iteration: the CLI is a
+    # PyInstaller onefile binary with real startup cost (unpacks a
+    # whole Python runtime on each launch) — calling it twice per
+    # dialog redraw made this screen noticeably slow to open. Local
+    # variables are updated directly after each --set-preferenza
+    # instead of re-invoking the CLI to read them back.
+    dest_attuale=$("$CLI" --get-preferenza destinazione 2>/dev/null)
+    log_attuale=$("$CLI" --get-preferenza log 2>/dev/null)
 
+    while :; do
         if [ -n "$dest_attuale" ]; then
             bottone_dest="Rimuovi cartella predefinita"
             dest_testo="$dest_attuale"
@@ -99,8 +117,9 @@ mostra_preferenze() {
         fi
 
         scelta=$(osascript <<EOF 2>/dev/null
+tell application "System Events" to activate
 display dialog "Cartella predefinita: $dest_testo
-Log: $log_testo" buttons {"$bottone_dest", "$bottone_log", "Chiudi"} default button "Chiudi" with title "sbusta-p7m — Preferenze"
+Log: $log_testo" buttons {"$bottone_dest", "$bottone_log", "Chiudi"} default button "Chiudi" cancel button "Chiudi" with title "sbusta-p7m — Preferenze"
 button returned of result
 EOF
         ) || break
@@ -109,20 +128,24 @@ EOF
             "$bottone_dest")
                 if [ -n "$dest_attuale" ]; then
                     "$CLI" --set-preferenza destinazione ""
+                    dest_attuale=""
                 else
                     nuova=$(osascript -e 'POSIX path of (choose folder with prompt "Cartella predefinita:")' 2>/dev/null)
-                    [ -n "$nuova" ] && "$CLI" --set-preferenza destinazione "$nuova"
+                    nuova="${nuova%/}"
+                    if [ -n "$nuova" ]; then
+                        "$CLI" --set-preferenza destinazione "$nuova"
+                        dest_attuale="$nuova"
+                    fi
                 fi
                 ;;
             "$bottone_log")
                 if [ "$log_attuale" = "off" ]; then
                     "$CLI" --set-preferenza log on
+                    log_attuale="on"
                 else
                     "$CLI" --set-preferenza log off
+                    log_attuale="off"
                 fi
-                ;;
-            "Chiudi")
-                break
                 ;;
         esac
     done
@@ -172,91 +195,128 @@ fi
 # land on the same page (opens Help Viewer's general view instead) —
 # not worth a redundant, less reliable path to the same content.
 #
-# Wizard-style navigation with a real "back" across 2 levels, same
-# structure as Linux (linux-launcher/wrapper.sh): Annulla/Esc at any
-# level returns to the level above instead of exiting — only level 1
-# (nothing above it) is a real exit.
-while :; do  # level 1: File / Cartella / Preferenze
-    tipo=$(osascript <<'EOF' 2>/dev/null
-display dialog "Estrarre un file .p7m singolo o tutti i file in una cartella?" buttons {"File", "Cartella", "Preferenze..."} default button "File" with title "sbusta-p7m"
+# Interactive mode, two real steps: a top-level choice (Annulla /
+# Seleziona... / Preferenze...), then — for "Seleziona..." — a single
+# native picker that accepts files AND folders together, one or more
+# at a time (NSOpenPanel via JXA: classic AppleScript's "choose file"/
+# "choose folder" can't mix the two). Selected items are processed
+# exactly like droplet mode (-r on each, harmless on a single file).
+# "Annulla" is a real cancel button everywhere (AppleScript only binds
+# Esc/Cmd-. to -128 when a "cancel button" is explicitly named — an
+# assumption the previous version of this script never actually had
+# verified for the Esc key specifically); cancelling at any deeper
+# step returns to this top level instead of exiting the app.
+while :; do  # top level: Annulla / Seleziona / Preferenze
+    scelta=$(osascript <<'EOF' 2>/dev/null
+tell application "System Events" to activate
+display dialog "Estrarre uno o più file .p7m e/o cartelle." buttons {"Annulla", "Seleziona...", "Preferenze..."} default button "Seleziona..." cancel button "Annulla" with title "sbusta-p7m"
 button returned of result
 EOF
     ) || exit 0
 
-    if [ "$tipo" = "Preferenze..." ]; then
+    if [ "$scelta" = "Preferenze..." ]; then
         mostra_preferenze
         continue
     fi
 
-    while :; do  # level 2: source file/folder selection
-        if [ "$tipo" = "File" ]; then
-            percorso=$(osascript -e 'POSIX path of (choose file with prompt "Seleziona un file .p7m:")' 2>/dev/null) || continue 2
-            ricorsivo=""
-        else
-            percorso=$(osascript -e 'POSIX path of (choose folder with prompt "Seleziona una cartella:")' 2>/dev/null) || continue 2
-            ricorsivo="-r"
-        fi
+    percorsi=$(osascript -l JavaScript <<'EOF' 2>/dev/null
+ObjC.import('AppKit');
+function run() {
+    var panel = $.NSOpenPanel.openPanel;
+    panel.canChooseFiles = true;
+    panel.canChooseDirectories = true;
+    panel.allowsMultipleSelection = true;
+    panel.message = "Seleziona uno o più file .p7m e/o cartelle";
+    panel.prompt = "Estrai";
+    if (panel.runModal() !== 1) return "";  // 1 = NSFileHandlingPanelOKButton
+    var urls = panel.URLs;
+    var paths = [];
+    for (var i = 0; i < urls.count; i++) {
+        paths.push(ObjC.unwrap(urls.objectAtIndex(i).path));
+    }
+    return paths.join("\n");
+}
+EOF
+    )
+    # Picker cancelled (or nothing usable returned): back to the top
+    # level, not an app exit — mirrors "Annulla" everywhere else.
+    [ -z "$percorsi" ] && continue
 
-        # Explicit three-way choice instead of overloading a native
-        # folder picker's Cancel button: "Annulla" here genuinely
-        # aborts back to level 2 (matches what Cancel means everywhere
-        # else), it does NOT mean "proceed with the source folder" as
-        # an earlier version of this script did.
-        destinazione=""
-        annullato=0
-        while :; do  # level 3: destination folder
-            scelta=$(osascript <<'EOF' 2>/dev/null
-display dialog "Cartella di destinazione?" buttons {"Annulla", "Cartella sorgente", "Scegli..."} default button "Cartella sorgente" with title "sbusta-p7m"
+    destinazione=""
+    annullato=0
+    while :; do  # destination folder, applies to the whole selection
+        scelta_dest=$(osascript <<'EOF' 2>/dev/null
+tell application "System Events" to activate
+display dialog "Cartella di destinazione?" buttons {"Annulla", "Cartella sorgente", "Scegli..."} default button "Cartella sorgente" cancel button "Annulla" with title "sbusta-p7m"
 button returned of result
 EOF
-            )
-            ret=$?
-            if [ "$ret" -ne 0 ]; then
-                # Esc or window close: same effect as "Annulla".
-                annullato=1
+        )
+        ret=$?
+        if [ "$ret" -ne 0 ]; then
+            # Esc, window close, or "Annulla" itself (now the cancel
+            # button, so a click on it also raises -128): same effect.
+            annullato=1
+            break
+        fi
+        case "$scelta_dest" in
+            "Cartella sorgente")
                 break
-            fi
-            case "$scelta" in
-                Annulla)
-                    annullato=1
-                    break
-                    ;;
-                "Cartella sorgente")
-                    break
-                    ;;
-                "Scegli...")
-                    destinazione=$(osascript -e 'POSIX path of (choose folder with prompt "Cartella di destinazione:")' 2>/dev/null)
-                    # If this inner picker is itself cancelled,
-                    # $destinazione stays empty and we loop back to
-                    # the three-way choice above, instead of guessing
-                    # what the user meant.
-                    [ -n "$destinazione" ] && break
-                    ;;
-            esac
-        done
-        # Annulla/Esc at level 3: goes back to level 2 (re-pick source
-        # file/folder), doesn't exit the app.
-        [ "$annullato" -eq 1 ] && continue
-
-        break 2  # proceeds to extraction, exiting both loops
+                ;;
+            "Scegli...")
+                destinazione=$(osascript -e 'POSIX path of (choose folder with prompt "Cartella di destinazione:")' 2>/dev/null)
+                destinazione="${destinazione%/}"
+                # If this inner picker is itself cancelled,
+                # $destinazione stays empty and we loop back to the
+                # three-way choice above, instead of guessing what the
+                # user meant.
+                [ -n "$destinazione" ] && break
+                ;;
+        esac
     done
+    # Cancelling the destination choice goes back to the top level
+    # (re-pick what to extract), doesn't exit the app.
+    [ "$annullato" -eq 1 ] && continue
+
+    break  # proceeds to extraction
 done
 
-if [ -n "$destinazione" ]; then
-    # $ricorsivo intentionally unquoted: it is always either empty or
-    # the single token "-r", never a value needing word-preservation.
-    output=$("$CLI" "$percorso" $ricorsivo -d "$destinazione" 2>&1)
-    esito=$?
-    cartella_log="$destinazione"
-else
-    output=$("$CLI" "$percorso" $ricorsivo 2>&1)
-    esito=$?
-    if [ -d "$percorso" ]; then
-        cartella_log="$percorso"
+output=""
+esito_totale=0
+# Split $percorsi (newline-separated) into positional parameters
+# without a subshell (a `| while read` pipeline would run the loop in
+# one, losing $output/$esito_totale afterwards) and without word- or
+# glob-splitting each path on spaces/*/? — same POSIX-safe idiom used
+# nowhere else in this file yet because droplet mode gets its paths
+# already split, as "$@", from Platypus itself.
+oldifs="$IFS"
+IFS='
+'
+set -f
+set -- $percorsi
+set +f
+IFS="$oldifs"
+for percorso in "$@"; do
+    if [ -n "$destinazione" ]; then
+        out=$("$CLI" "$percorso" -r -d "$destinazione" 2>&1)
     else
-        cartella_log=$(dirname "$percorso")
+        out=$("$CLI" "$percorso" -r 2>&1)
     fi
+    esito=$?
+    output="$output=== $percorso ===
+$out
+
+"
+    if [ "$esito" -ne 0 ]; then
+        esito_totale=1
+    fi
+done
+if [ -n "$destinazione" ]; then
+    cartella_log="$destinazione"
+elif [ -d "$1" ]; then
+    cartella_log="$1"
+else
+    cartella_log=$(dirname "$1")
 fi
 
-scrivi_log_e_mostra "$esito" "$output" "$cartella_log"
-exit "$esito"
+scrivi_log_e_mostra "$esito_totale" "$output" "$cartella_log"
+exit "$esito_totale"
