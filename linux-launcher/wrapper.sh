@@ -221,6 +221,8 @@ fi
 # standard POSIX syntax (not a bashism), verified here where /bin/sh is
 # bash, but not tested against dash in this session (on Debian/Ubuntu
 # /bin/sh is dash) — to be reconfirmed if issues show up there.
+destinazione_preferita=$(leggi_preferenza destinazione)
+
 while :; do  # level 1: File / Cartella / Aiuto / Preferenze
     # --no-cancel is not supported by this dialog type (verified:
     # zenity exits immediately with "--no-cancel is not supported for
@@ -241,6 +243,7 @@ while :; do  # level 1: File / Cartella / Aiuto / Preferenze
         continue
     elif [ "$risposta" = "Preferenze..." ]; then
         mostra_preferenze
+        destinazione_preferita=$(leggi_preferenza destinazione)
         continue
     else
         # No level above this one: Annulla/Esc/window close really do
@@ -259,32 +262,41 @@ while :; do  # level 1: File / Cartella / Aiuto / Preferenze
             ricorsivo="-r"
         fi
 
-        # Same three-way choice as macOS (0.1.7): "Annulla" genuinely
-        # aborts, it does not mean "proceed with the source folder" —
-        # that was a real bug there, not repeated here from the start.
-        destinazione=""
-        annullato=0
-        while :; do  # level 3: destination folder
-            scelta=$(zenity --question --title="sbusta-p7m" \
-                --text="Cartella di destinazione?" \
-                --ok-label="Cartella sorgente" --cancel-label="Annulla" \
-                --extra-button="Scegli..." 2>/dev/null)
-            ret=$?
-            if [ "$ret" -eq 0 ]; then
-                break
-            elif [ "$scelta" = "Scegli..." ]; then
-                destinazione=$(zenity --file-selection --directory \
-                    --title="Cartella di destinazione" 2>/dev/null)
-                destinazione="${destinazione%/}"
-                [ -n "$destinazione" ] && break
-            else
-                # Annulla/Esc at level 3: goes back to level 2 (re-pick
-                # source file/folder), doesn't exit the app.
-                annullato=1
-                break
-            fi
-        done
-        [ "$annullato" -eq 1 ] && continue
+        if [ -n "$destinazione_preferita" ]; then
+            # A configured default destination is used directly, same
+            # as droplet mode — not offered as one more option
+            # alongside "Cartella sorgente"/"Scegli...", the whole
+            # dialog is skipped.
+            destinazione="$destinazione_preferita"
+        else
+            # Same three-way choice as macOS (0.1.7): "Annulla"
+            # genuinely aborts, it does not mean "proceed with the
+            # source folder" — that was a real bug there, not
+            # repeated here from the start.
+            destinazione=""
+            annullato=0
+            while :; do  # level 3: destination folder
+                scelta=$(zenity --question --title="sbusta-p7m" \
+                    --text="Cartella di destinazione?" \
+                    --ok-label="Cartella sorgente" --cancel-label="Annulla" \
+                    --extra-button="Scegli..." 2>/dev/null)
+                ret=$?
+                if [ "$ret" -eq 0 ]; then
+                    break
+                elif [ "$scelta" = "Scegli..." ]; then
+                    destinazione=$(zenity --file-selection --directory \
+                        --title="Cartella di destinazione" 2>/dev/null)
+                    destinazione="${destinazione%/}"
+                    [ -n "$destinazione" ] && break
+                else
+                    # Annulla/Esc at level 3: goes back to level 2 (re-pick
+                    # source file/folder), doesn't exit the app.
+                    annullato=1
+                    break
+                fi
+            done
+            [ "$annullato" -eq 1 ] && continue
+        fi
 
         break 2  # proceeds to extraction, exiting both loops
     done
