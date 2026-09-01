@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sbusta-p7m"
-version = "0.1.0"
+version = "0.3.0"
 description = "Extract the PDF and signer metadata embedded in .p7m (CMS/PKCS#7) envelopes"
 requires-python = ">=3.9"
 dependencies = [

@@ -11,8 +11,8 @@ android {
         applicationId = "com.tmia.sbustap7m"
         minSdk = 26
         targetSdk = 37
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
     }
 
     // Release signing: keystore path/passwords come from environment
