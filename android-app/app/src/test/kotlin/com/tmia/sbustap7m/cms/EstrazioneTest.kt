@@ -41,10 +41,10 @@ class EstrazioneTest {
 
     @Test
     fun `estrae un numero arbitrario di co-firmatari dello stesso livello`() {
-        // La fixture ne ha 4, ma il punto del test è che il codice non
-        // assume nessun numero fisso (a differenza di MAX_LIVELLI per
-        // l'annidamento, qui non c'è alcun tetto): documenti reali con
-        // più co-firmatari sono stati osservati.
+        // The fixture has 4, but the point of this test is that the
+        // code assumes no fixed count (unlike MAX_LIVELLI for nesting,
+        // there's no cap here): real documents with more co-signers
+        // have been observed.
         val bytes = leggiFixture("test-busta-cofirmatari.p7m")
         val risultato = estrai("test-busta-cofirmatari.p7m", bytes)
 
