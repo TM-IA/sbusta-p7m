@@ -216,58 +216,74 @@ fi
 # land on the same page (opens Help Viewer's general view instead) —
 # not worth a redundant, less reliable path to the same content.
 #
-# Interactive mode, two real steps: a top-level choice (Annulla /
-# Seleziona... / Preferenze...), then — for "Seleziona..." — a single
-# native picker that accepts files AND folders together, one or more
-# at a time (NSOpenPanel via JXA: classic AppleScript's "choose file"/
-# "choose folder" can't mix the two). Selected items are processed
-# exactly like droplet mode (-r on each, harmless on a single file).
-# "Annulla" is a real cancel button everywhere (AppleScript only binds
-# Esc/Cmd-. to -128 when a "cancel button" is explicitly named — an
-# assumption the previous version of this script never actually had
-# verified for the Esc key specifically); cancelling at any deeper
-# step returns to this top level instead of exiting the app.
-while :; do  # top level: Annulla / Seleziona / Preferenze
-    scelta=$(osascript <<'EOF' 2>/dev/null
+# Interactive mode, two real steps: a top-level choice (File /
+# Cartella / Preferenze, via "choose from list" — not "display
+# dialog", which caps out at 3 buttons and had no room left for a
+# real Annulla once Preferenze was added), then a native picker for
+# one or more items of the chosen type. Classic AppleScript has no
+# single verb that lets you pick files and folders together (verified
+# against Apple's own docs) — Cocoa's NSOpenPanel does, but calling it
+# directly from JXA proved unreliable in this exact context (a
+# faceless Platypus script): the panel opened but closed itself on
+# any click inside it, even after forcing activation. "choose file"/
+# "choose folder" are the same Standard Additions family already
+# proven to work here (mostra_preferenze's folder picker), so back to
+# those, each with "multiple selections allowed" — files and folders
+# just can't be mixed in the same pick.
+#
+# Cancel behavior differs by verb, handled accordingly below:
+# "choose from list" doesn't raise an error on Cancel/Esc, it returns
+# boolean false (a well-known AppleScript asymmetry) — detected via
+# the "ANNULLA" sentinel string. "choose file"/"choose folder" do
+# raise -128, caught the same way as everywhere else in this script
+# (nonzero osascript exit).
+#
+# "Annulla" (or Esc) at this top level is a real exit — nothing above
+# it to go back to; cancelling at any deeper step returns here instead.
+while :; do  # top level: File / Cartella / Preferenze
+    tipo=$(osascript <<'EOF' 2>/dev/null
 tell application "System Events" to activate
-display dialog "Estrarre uno o più file .p7m e/o cartelle." buttons {"Annulla", "Seleziona...", "Preferenze..."} default button "Seleziona..." cancel button "Annulla" with title "sbusta-p7m"
-button returned of result
+set scelta to choose from list {"File", "Cartella", "Preferenze"} with prompt "Estrarre uno o più file .p7m, o tutti quelli in una o più cartelle?" with title "sbusta-p7m"
+if scelta is false then
+    return "ANNULLA"
+else
+    return item 1 of scelta
+end if
 EOF
-    ) || exit 0
+    )
+    [ "$tipo" = "ANNULLA" ] && exit 0
 
-    if [ "$scelta" = "Preferenze..." ]; then
+    if [ "$tipo" = "Preferenze" ]; then
         mostra_preferenze
         continue
     fi
 
-    percorsi=$(osascript -l JavaScript <<'EOF' 2>/dev/null
-ObjC.import('AppKit');
-function run() {
-    // Without this, osascript never becomes the frontmost process on
-    // its own (same root cause as the "activate" added to the
-    // AppleScript dialogs above) — the panel showed but clicks inside
-    // it were misrouted, closing it immediately instead of selecting
-    // anything. floatingPanel helps it keep focus once activated.
-    $.NSApplication.sharedApplication.activateIgnoringOtherApps(true);
-    var panel = $.NSOpenPanel.openPanel;
-    panel.floatingPanel = true;
-    panel.canChooseFiles = true;
-    panel.canChooseDirectories = true;
-    panel.allowsMultipleSelection = true;
-    panel.message = "Seleziona uno o più file .p7m e/o cartelle";
-    panel.prompt = "Estrai";
-    if (panel.runModal() !== 1) return "";  // 1 = NSFileHandlingPanelOKButton
-    var urls = panel.URLs;
-    var paths = [];
-    for (var i = 0; i < urls.count; i++) {
-        paths.push(ObjC.unwrap(urls.objectAtIndex(i).path));
-    }
-    return paths.join("\n");
-}
+    if [ "$tipo" = "File" ]; then
+        percorsi=$(osascript <<'EOF' 2>/dev/null
+tell application "System Events" to activate
+set sceltaFile to choose file with prompt "Seleziona uno o più file .p7m:" multiple selections allowed true
+set percorsi to ""
+repeat with f in sceltaFile
+    set percorsi to percorsi & POSIX path of f & linefeed
+end repeat
+return percorsi
 EOF
-    )
-    # Picker cancelled (or nothing usable returned): back to the top
-    # level, not an app exit — mirrors "Annulla" everywhere else.
+        ) || continue
+    else
+        percorsi=$(osascript <<'EOF' 2>/dev/null
+tell application "System Events" to activate
+set sceltaCartelle to choose folder with prompt "Seleziona una o più cartelle:" multiple selections allowed true
+set percorsi to ""
+repeat with f in sceltaCartelle
+    set percorsi to percorsi & POSIX path of f & linefeed
+end repeat
+return percorsi
+EOF
+        ) || continue
+    fi
+    # Picker cancelled at the AppleScript level would already have
+    # been caught by the `|| continue` above; this only guards against
+    # an empty-but-zero-exit edge case.
     [ -z "$percorsi" ] && continue
 
     destinazione=""
