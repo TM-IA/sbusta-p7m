@@ -136,7 +136,33 @@ def _elabora_file(percorso_p7m, cartella_destinazione):
     return True
 
 
+def _gestisci_flag_preferenze(argv):
+    """Hidden CLI contract used only by the GUI wrappers (POSIX sh,
+    no JSON parser) to read/write sbusta_p7m.preferenze. Not exposed
+    via argparse/--help: intercepted before it, on purpose."""
+    if len(argv) == 2 and argv[0] == "--get-preferenza":
+        valore = preferenze.leggi(argv[1])
+        if argv[1] == "log":
+            print(valore if valore in ("on", "off") else "on")
+        elif valore:
+            print(valore)
+        return 0
+    if len(argv) == 3 and argv[0] == "--set-preferenza":
+        try:
+            preferenze.scrivi(argv[1], argv[2])
+        except (OSError, ValueError) as e:
+            print(f"errore: impossibile salvare la preferenza ({e})", file=sys.stderr)
+            return 1
+        return 0
+    return None
+
+
 def main(argv=None):
+    argv = sys.argv[1:] if argv is None else list(argv)
+    esito = _gestisci_flag_preferenze(argv)
+    if esito is not None:
+        return esito
+
     parser = argparse.ArgumentParser(
         description="Estrae il PDF e i metadati del firmatario contenuti in una busta .p7m (CMS/PKCS#7)."
     )
