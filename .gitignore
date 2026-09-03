@@ -16,5 +16,7 @@
 /android-app/**/build
 /android-app/.gradle
 /android-app/local.properties
+/macos-app/.build
 __pycache__/
 *.pyc
+.DS_Store
